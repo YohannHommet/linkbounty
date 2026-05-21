@@ -1,0 +1,10 @@
+{{define "title"}}Erreur · LinkBounty{{end}}
+
+{{define "content"}}
+<div class="max-w-md mx-auto text-center py-16">
+  <p class="text-[var(--color-error)] text-lg font-medium mb-3">{{.Message}}</p>
+  <a href="/" class="inline-block px-5 py-2 bg-[var(--color-accent)] text-white text-sm font-medium rounded-[var(--radius-sm)] hover:opacity-90 transition-opacity">
+    Nouveau scan
+  </a>
+</div>
+{{end}}

@@ -1,0 +1,58 @@
+{{define "base"}}<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{block "title" .}}LinkBounty — Vérificateur de liens brisés{{end}}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&family=Playfair+Display:ital@0;1&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --color-bg:      #f9f6f0;
+      --color-text:    #21201d;
+      --color-muted:   #78716c;
+      --color-accent:  #b45309;
+      --color-error:   #dc2626;
+      --color-success: #16a34a;
+      --color-surface: #ffffff;
+      --color-border:  #e7e5e0;
+      --font-sans:  'Plus Jakarta Sans', system-ui, sans-serif;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+    }
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--color-bg);
+      color: var(--color-text);
+    }
+    .brand { font-family: var(--font-serif); font-style: italic; color: var(--color-accent); }
+    .font-mono { font-family: var(--font-mono); }
+  </style>
+</head>
+<body class="min-h-screen">
+  <header class="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="/" class="brand text-xl">Link·bounty</a>
+      <nav class="hidden sm:flex items-center gap-4 text-sm text-[var(--color-muted)]">
+        <a href="https://github.com" class="hover:text-[var(--color-text)] transition-colors">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-12">
+    {{block "content" .}}{{end}}
+  </main>
+
+  <footer class="border-t border-[var(--color-border)] mt-16">
+    <div class="max-w-3xl mx-auto px-4 py-6 text-center text-sm text-[var(--color-muted)]">
+      LinkBounty · Gratuit, sans compte
+    </div>
+  </footer>
+</body>
+</html>{{end}}

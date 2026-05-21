@@ -1,0 +1,13 @@
+{{define "link-row"}}
+<div class="flex items-start gap-3 py-2 border-b border-[var(--color-border)] last:border-0">
+  <span class="shrink-0 mt-0.5 text-xs font-mono px-1.5 py-0.5 rounded {{if eq .StatusCode 0}}bg-red-100 text-red-700{{else if lt .StatusCode 500}}bg-amber-100 text-amber-700{{else}}bg-red-100 text-red-700{{end}}">
+    {{if eq .StatusCode 0}}ERR{{else}}{{.StatusCode}}{{end}}
+  </span>
+  <div class="min-w-0">
+    <p class="font-mono text-sm text-[var(--color-text)] truncate" title="{{.TargetLink}}">
+      {{truncate .TargetLink 80}}
+    </p>
+    {{if .ErrorMsg}}<p class="text-xs text-[var(--color-muted)] mt-0.5">{{.ErrorMsg}}</p>{{end}}
+  </div>
+</div>
+{{end}}
