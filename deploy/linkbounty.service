@@ -1,0 +1,24 @@
+[Unit]
+Description=LinkBounty broken link checker
+After=network.target
+
+[Service]
+Type=simple
+User=linkbounty
+WorkingDirectory=/opt/linkbounty
+ExecStart=/opt/linkbounty/linkbounty
+Restart=on-failure
+RestartSec=5s
+
+Environment=ADDR=:8080
+Environment=DB_PATH=/opt/linkbounty/linkbounty.db
+Environment=UI_DIR=/opt/linkbounty/ui/html
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/linkbounty
+
+[Install]
+WantedBy=multi-user.target

@@ -27,8 +27,8 @@ func (a *App) handleScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// normalize: add https:// if no scheme
-	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+	// normalize: prepend https:// only when there is no scheme at all
+	if !strings.Contains(rawURL, "://") {
 		rawURL = "https://" + rawURL
 	}
 
@@ -39,6 +39,12 @@ func (a *App) handleScan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	host := strings.ToLower(parsed.Hostname())
+	if !strings.Contains(host, ".") {
+		// reject bare hostnames with no TLD (e.g. "https://notadomain")
+		a.renderError(w, r, http.StatusUnprocessableEntity, "URL invalide. Exemple : https://monblog.fr")
+		return
+	}
+
 	for _, prefix := range privateRanges {
 		if strings.HasPrefix(host, prefix) || host == strings.TrimSuffix(prefix, ".") {
 			a.renderError(w, r, http.StatusUnprocessableEntity, "Cette URL n'est pas autorisée.")
