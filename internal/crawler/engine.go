@@ -28,7 +28,8 @@ func Run(startURL string, onProgress ProgressFunc) ([]database.BrokenLink, int, 
 	if err != nil {
 		return nil, 0, fmt.Errorf("invalid url: %w", err)
 	}
-	domain := parsed.Hostname()
+	domain := parsed.Hostname()   // for AllowedDomains (no port)
+	siteHost := parsed.Host       // host:port — distinguishes same-host servers on different ports
 
 	var (
 		links      []database.BrokenLink
@@ -73,7 +74,7 @@ func Run(startURL string, onProgress ProgressFunc) ([]database.BrokenLink, int, 
 			return
 		}
 
-		if strings.EqualFold(target.Hostname(), domain) {
+		if strings.EqualFold(target.Host, siteHost) {
 			// internal page — visit if under limit
 			if pageCount.Load() < maxPages {
 				pageCount.Add(1)
