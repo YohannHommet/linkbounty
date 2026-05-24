@@ -23,22 +23,28 @@ const (
 
 type ProgressFunc func(pages int)
 
-func Run(startURL string, onProgress ProgressFunc) ([]database.BrokenLink, int, error) {
+// Result holds everything the caller needs after a crawl.
+type Result struct {
+	Links         []database.BrokenLink
+	PagesCrawled  int
+	ExtLinksFound int // total external links encountered, including those skipped by cap
+}
+
+func Run(startURL string, onProgress ProgressFunc) (Result, error) {
 	parsed, err := url.Parse(startURL)
 	if err != nil {
-		return nil, 0, fmt.Errorf("invalid url: %w", err)
+		return Result{}, fmt.Errorf("invalid url: %w", err)
 	}
-	domain := parsed.Hostname()   // for AllowedDomains (no port)
-	siteHost := parsed.Host       // host:port — distinguishes same-host servers on different ports
+	domain := parsed.Hostname() // for AllowedDomains (no port)
+	siteHost := parsed.Host     // host:port — distinguishes same-host servers on different ports
 
 	var (
-		links      []database.BrokenLink
-		mu         sync.Mutex
-		pageCount  atomic.Int64
-		extSem     = make(chan struct{}, externalWorkers)
-		extCount   atomic.Int64
-		truncated  bool
-		extWg      sync.WaitGroup
+		links     []database.BrokenLink
+		mu        sync.Mutex
+		pageCount atomic.Int64
+		extSem    = make(chan struct{}, externalWorkers)
+		extCount  atomic.Int64
+		extWg     sync.WaitGroup
 	)
 
 	client := &http.Client{
@@ -86,11 +92,9 @@ func Run(startURL string, onProgress ProgressFunc) ([]database.BrokenLink, int, 
 			return
 		}
 
-		// external link
-		if extCount.Add(1) > maxExternalLinks {
-			mu.Lock()
-			truncated = truncated || true
-			mu.Unlock()
+		// external link — always count, only check if under cap
+		n := extCount.Add(1)
+		if n > maxExternalLinks {
 			return
 		}
 
@@ -110,13 +114,16 @@ func Run(startURL string, onProgress ProgressFunc) ([]database.BrokenLink, int, 
 	})
 
 	if err := c.Visit(startURL); err != nil {
-		return nil, 0, fmt.Errorf("visit failed: %w", err)
+		return Result{}, fmt.Errorf("visit failed: %w", err)
 	}
 	c.Wait()
 	extWg.Wait()
 
-	_ = truncated // surfaced via pages count in caller
-	return links, int(pageCount.Load()), nil
+	return Result{
+		Links:        links,
+		PagesCrawled: int(pageCount.Load()),
+		ExtLinksFound: int(extCount.Load()),
+	}, nil
 }
 
 func checkExternal(client *http.Client, sourcePage, targetLink string) *database.BrokenLink {

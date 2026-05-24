@@ -52,7 +52,7 @@ func TestUpdateJobDone(t *testing.T) {
 	s := newTestStore(t)
 	s.CreateJob("job-2", "blog.com")
 
-	if err := s.UpdateJobDone("job-2", 47, 3); err != nil {
+	if err := s.UpdateJobDone("job-2", 47, 3, 120); err != nil {
 		t.Fatalf("UpdateJobDone: %v", err)
 	}
 
@@ -65,6 +65,9 @@ func TestUpdateJobDone(t *testing.T) {
 	}
 	if job.BrokenCount != 3 {
 		t.Errorf("broken_count = %d, want 3", job.BrokenCount)
+	}
+	if job.ExtLinksFound != 120 {
+		t.Errorf("ext_links_found = %d, want 120", job.ExtLinksFound)
 	}
 }
 
@@ -89,7 +92,7 @@ func TestMarkOrphansError(t *testing.T) {
 	s := newTestStore(t)
 	s.CreateJob("orphan-1", "a.com")
 	s.CreateJob("orphan-2", "b.com")
-	s.UpdateJobDone("orphan-2", 10, 0)
+	s.UpdateJobDone("orphan-2", 10, 0, 0)
 
 	if err := s.MarkOrphansError(); err != nil {
 		t.Fatalf("MarkOrphansError: %v", err)
@@ -161,7 +164,7 @@ func TestCleanupCascade(t *testing.T) {
 	s.SaveLinks("old-job", []BrokenLink{
 		{SourcePage: "https://old.com/p", TargetLink: "https://dead.com", StatusCode: 404, LinkType: "broken"},
 	})
-	s.UpdateJobDone("old-job", 1, 1)
+	s.UpdateJobDone("old-job", 1, 1, 5)
 
 	if err := s.Cleanup(0); err != nil {
 		t.Fatalf("Cleanup: %v", err)
@@ -182,7 +185,7 @@ func TestCleanupCascade(t *testing.T) {
 func TestCleanupPreservesRecent(t *testing.T) {
 	s := newTestStore(t)
 	s.CreateJob("fresh-job", "fresh.com")
-	s.UpdateJobDone("fresh-job", 5, 0)
+	s.UpdateJobDone("fresh-job", 5, 0, 0)
 
 	if err := s.Cleanup(7 * 24 * time.Hour); err != nil {
 		t.Fatalf("Cleanup: %v", err)

@@ -98,5 +98,6 @@ func (a *App) Routes() *http.ServeMux {
 	mux.HandleFunc("POST /scan", a.handleScan)
 	mux.HandleFunc("GET /r/{uuid}", a.handleReport)
 	mux.HandleFunc("GET /r/{uuid}/status", a.handleStatus)
+	mux.HandleFunc("GET /robots.txt", a.handleRobots)
 	return mux
 }

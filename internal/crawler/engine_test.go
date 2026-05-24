@@ -8,7 +8,6 @@ import (
 	"testing"
 )
 
-// mockSite builds a test HTTP server with internal pages and external links.
 func mockSite(t *testing.T, pages map[string]string) *httptest.Server {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -29,27 +28,25 @@ func TestRunFindsNoBrokenLinksOnCleanSite(t *testing.T) {
 	defer ext.Close()
 
 	site := mockSite(t, map[string]string{
-		"/": fmt.Sprintf(`<html><body><a href="/about">about</a><a href="%s/good">ext</a></body></html>`, ext.URL),
+		"/":      fmt.Sprintf(`<html><body><a href="/about">about</a><a href="%s/good">ext</a></body></html>`, ext.URL),
 		"/about": `<html><body><p>About us</p></body></html>`,
 	})
 	defer site.Close()
 
-	links, pages, err := Run(site.URL+"/", nil)
+	result, err := Run(site.URL+"/", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if pages < 1 {
-		t.Errorf("pages = %d, want >= 1", pages)
+	if result.PagesCrawled < 1 {
+		t.Errorf("PagesCrawled = %d, want >= 1", result.PagesCrawled)
 	}
-
-	var broken []string
-	for _, l := range links {
+	if result.ExtLinksFound < 1 {
+		t.Errorf("ExtLinksFound = %d, want >= 1", result.ExtLinksFound)
+	}
+	for _, l := range result.Links {
 		if l.LinkType == "broken" {
-			broken = append(broken, l.TargetLink)
+			t.Errorf("expected 0 broken links, got: %+v", l)
 		}
-	}
-	if len(broken) > 0 {
-		t.Errorf("expected 0 broken links, got: %v", broken)
 	}
 }
 
@@ -64,19 +61,22 @@ func TestRunDetectsBrokenExternalLinks(t *testing.T) {
 	})
 	defer site.Close()
 
-	links, _, err := Run(site.URL+"/", nil)
+	result, err := Run(site.URL+"/", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
 	var found bool
-	for _, l := range links {
+	for _, l := range result.Links {
 		if l.LinkType == "broken" && strings.Contains(l.TargetLink, dead.URL) {
 			found = true
 		}
 	}
 	if !found {
 		t.Error("expected a broken link to the dead server, found none")
+	}
+	if result.ExtLinksFound < 1 {
+		t.Errorf("ExtLinksFound = %d, want >= 1", result.ExtLinksFound)
 	}
 }
 
@@ -91,13 +91,13 @@ func TestRunDetectsRedirects(t *testing.T) {
 	})
 	defer site.Close()
 
-	links, _, err := Run(site.URL+"/", nil)
+	result, err := Run(site.URL+"/", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 
 	var foundRedirect bool
-	for _, l := range links {
+	for _, l := range result.Links {
 		if l.LinkType == "redirect" {
 			foundRedirect = true
 		}
@@ -124,12 +124,11 @@ func TestRunFallsBackToGETOn405(t *testing.T) {
 	})
 	defer site.Close()
 
-	links, _, err := Run(site.URL+"/", nil)
+	result, err := Run(site.URL+"/", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-
-	for _, l := range links {
+	for _, l := range result.Links {
 		if l.LinkType == "broken" && strings.Contains(l.TargetLink, ext.URL) {
 			t.Errorf("405→GET fallback should succeed, but link marked broken: %+v", l)
 		}
@@ -139,9 +138,34 @@ func TestRunFallsBackToGETOn405(t *testing.T) {
 	}
 }
 
+func TestRunExtLinksFoundCount(t *testing.T) {
+	ext := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ext.Close()
+
+	// 3 distinct external links
+	site := mockSite(t, map[string]string{
+		"/": fmt.Sprintf(`<html><body>
+			<a href="%s/a">a</a>
+			<a href="%s/b">b</a>
+			<a href="%s/c">c</a>
+		</body></html>`, ext.URL, ext.URL, ext.URL),
+	})
+	defer site.Close()
+
+	result, err := Run(site.URL+"/", nil)
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if result.ExtLinksFound != 3 {
+		t.Errorf("ExtLinksFound = %d, want 3", result.ExtLinksFound)
+	}
+}
+
 func TestRunProgressCallback(t *testing.T) {
 	site := mockSite(t, map[string]string{
-		"/": `<html><body><a href="/p1">p1</a><a href="/p2">p2</a></body></html>`,
+		"/":   `<html><body><a href="/p1">p1</a><a href="/p2">p2</a></body></html>`,
 		"/p1": `<html><body><p>page 1</p></body></html>`,
 		"/p2": `<html><body><p>page 2</p></body></html>`,
 	})
@@ -153,7 +177,6 @@ func TestRunProgressCallback(t *testing.T) {
 			maxSeen = n
 		}
 	})
-
 	if maxSeen < 1 {
 		t.Errorf("progress callback never fired or reported 0 pages")
 	}

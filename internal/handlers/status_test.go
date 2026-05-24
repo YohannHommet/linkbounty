@@ -76,7 +76,7 @@ func TestStatusFallsBackToSQLiteOnRegistryMiss(t *testing.T) {
 	app, _ := NewApp(db, &JobRegistry{}, "../../ui/html")
 
 	db.CreateJob("sqlite-job", "example.com")
-	db.UpdateJobDone("sqlite-job", 10, 2)
+	db.UpdateJobDone("sqlite-job", 10, 2, 45)
 
 	req := httptest.NewRequest(http.MethodGet, "/r/sqlite-job/status", nil)
 	req.SetPathValue("uuid", "sqlite-job")

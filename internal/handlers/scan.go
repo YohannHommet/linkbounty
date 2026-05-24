@@ -90,7 +90,7 @@ func (a *App) handleScan(w http.ResponseWriter, r *http.Request) {
 		defer func() { <-a.scanSem }()
 		defer a.Registry.Delete(jobID)
 
-		links, pages, err := crawler.Run(rawURL, func(n int) {
+		result, err := crawler.Run(rawURL, func(n int) {
 			state.PagesCrawled.Store(int64(n))
 		})
 		if err != nil {
@@ -101,20 +101,20 @@ func (a *App) handleScan(w http.ResponseWriter, r *http.Request) {
 		}
 
 		brokenCount := 0
-		for _, l := range links {
+		for _, l := range result.Links {
 			if l.LinkType == "broken" {
 				brokenCount++
 			}
 		}
 
-		if err := a.DB.SaveLinks(jobID, links); err != nil {
+		if err := a.DB.SaveLinks(jobID, result.Links); err != nil {
 			state.Status.Store(StatusError)
 			state.ErrorMsg.Store("Erreur lors de la sauvegarde du rapport.")
 			a.DB.UpdateJobError(jobID, "save links: "+err.Error())
 			return
 		}
 
-		if err := a.DB.UpdateJobDone(jobID, pages, brokenCount); err != nil {
+		if err := a.DB.UpdateJobDone(jobID, result.PagesCrawled, brokenCount, result.ExtLinksFound); err != nil {
 			state.Status.Store(StatusError)
 			state.ErrorMsg.Store("Erreur lors de la finalisation du rapport.")
 			a.DB.UpdateJobError(jobID, "update done: "+err.Error())
