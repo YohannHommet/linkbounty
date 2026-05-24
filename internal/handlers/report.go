@@ -4,15 +4,24 @@ import (
 	"net/http"
 )
 
+const (
+	spaLinkThreshold    = 5   // fewer external links than this on ≥10 pages → likely SPA
+	spaPageThreshold    = 10
+	extLinkCap          = 500
+)
+
 type reportData struct {
-	JobID        string
-	Domain       string
-	Status       string
-	ErrorMsg     string
-	PagesCrawled int
-	BrokenCount  int
-	Groups       []groupData
-	Redirects    []linkData
+	JobID             string
+	Domain            string
+	Status            string
+	ErrorMsg          string
+	PagesCrawled      int
+	BrokenCount       int
+	ExtLinksFound     int
+	ExtLinksTruncated bool // true when >500 external links were found
+	SPAWarning        bool // true when site appears to use client-side rendering
+	Groups            []groupData
+	Redirects         []linkData
 }
 
 type groupData struct {
@@ -43,12 +52,15 @@ func (a *App) handleReport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := reportData{
-		JobID:        job.ID,
-		Domain:       job.Domain,
-		Status:       job.Status,
-		ErrorMsg:     job.ErrorMsg,
-		PagesCrawled: job.PagesCrawled,
-		BrokenCount:  job.BrokenCount,
+		JobID:             job.ID,
+		Domain:            job.Domain,
+		Status:            job.Status,
+		ErrorMsg:          job.ErrorMsg,
+		PagesCrawled:      job.PagesCrawled,
+		BrokenCount:       job.BrokenCount,
+		ExtLinksFound:     job.ExtLinksFound,
+		ExtLinksTruncated: job.ExtLinksFound > extLinkCap,
+		SPAWarning:        job.ExtLinksFound < spaLinkThreshold && job.PagesCrawled >= spaPageThreshold,
 	}
 
 	if job.Status == "done" {

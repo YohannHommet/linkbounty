@@ -13,13 +13,14 @@ type Store struct {
 }
 
 type Job struct {
-	ID           string
-	Domain       string
-	Status       string
-	ErrorMsg     string
-	PagesCrawled int
-	BrokenCount  int
-	CreatedAt    time.Time
+	ID            string
+	Domain        string
+	Status        string
+	ErrorMsg      string
+	PagesCrawled  int
+	BrokenCount   int
+	ExtLinksFound int
+	CreatedAt     time.Time
 }
 
 type BrokenLink struct {
@@ -69,13 +70,14 @@ func configure(db *sql.DB) error {
 func migrate(db *sql.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS jobs (
-			id            TEXT PRIMARY KEY,
-			domain        TEXT NOT NULL,
-			status        TEXT NOT NULL DEFAULT 'running',
-			error_msg     TEXT,
-			pages_crawled INTEGER NOT NULL DEFAULT 0,
-			broken_count  INTEGER NOT NULL DEFAULT 0,
-			created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+			id              TEXT PRIMARY KEY,
+			domain          TEXT NOT NULL,
+			status          TEXT NOT NULL DEFAULT 'running',
+			error_msg       TEXT,
+			pages_crawled   INTEGER NOT NULL DEFAULT 0,
+			broken_count    INTEGER NOT NULL DEFAULT 0,
+			ext_links_found INTEGER NOT NULL DEFAULT 0,
+			created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 		);
 
 		CREATE TABLE IF NOT EXISTS broken_links (
@@ -101,10 +103,10 @@ func (s *Store) CreateJob(id, domain string) error {
 	return err
 }
 
-func (s *Store) UpdateJobDone(id string, pagesCrawled, brokenCount int) error {
+func (s *Store) UpdateJobDone(id string, pagesCrawled, brokenCount, extLinksFound int) error {
 	_, err := s.db.Exec(
-		`UPDATE jobs SET status='done', pages_crawled=?, broken_count=? WHERE id=?`,
-		pagesCrawled, brokenCount, id,
+		`UPDATE jobs SET status='done', pages_crawled=?, broken_count=?, ext_links_found=? WHERE id=?`,
+		pagesCrawled, brokenCount, extLinksFound, id,
 	)
 	return err
 }
@@ -153,11 +155,11 @@ func (s *Store) SaveLinks(jobID string, links []BrokenLink) error {
 
 func (s *Store) GetJob(id string) (*Job, error) {
 	row := s.db.QueryRow(
-		`SELECT id, domain, status, COALESCE(error_msg,''), pages_crawled, broken_count, created_at FROM jobs WHERE id=?`,
+		`SELECT id, domain, status, COALESCE(error_msg,''), pages_crawled, broken_count, ext_links_found, created_at FROM jobs WHERE id=?`,
 		id,
 	)
 	var j Job
-	if err := row.Scan(&j.ID, &j.Domain, &j.Status, &j.ErrorMsg, &j.PagesCrawled, &j.BrokenCount, &j.CreatedAt); err != nil {
+	if err := row.Scan(&j.ID, &j.Domain, &j.Status, &j.ErrorMsg, &j.PagesCrawled, &j.BrokenCount, &j.ExtLinksFound, &j.CreatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}

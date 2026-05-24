@@ -44,6 +44,22 @@
     </button>
   </div>
 
+  {{/* SPA warning: fewer than 5 external links found after crawling ≥10 pages */}}
+  {{if .SPAWarning}}
+  <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-[var(--radius-sm)] text-sm text-amber-800" role="alert">
+    <strong>Site dynamique détecté.</strong> Seulement {{.ExtLinksFound}} lien{{if ne .ExtLinksFound 1}}s{{end}} externe{{if ne .ExtLinksFound 1}}s{{end}} trouvé{{if ne .ExtLinksFound 1}}s{{end}} sur {{.PagesCrawled}} pages.
+    Ce site semble utiliser du rendu côté client (React, Vue, SPA) — LinkBounty ne peut pas exécuter JavaScript.
+    Le rapport peut être incomplet.
+  </div>
+  {{end}}
+
+  {{/* >100 pages truncation */}}
+  {{if ge .PagesCrawled 100}}
+  <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-[var(--radius-sm)] text-sm text-amber-800">
+    Ce site a plus de 100 pages. Seules les 100 premières ont été analysées.
+  </div>
+  {{end}}
+
   {{if eq .BrokenCount 0}}
     <div class="p-8 bg-green-50 border border-green-200 rounded-[var(--radius-md)] text-center">
       <p class="text-2xl mb-2">✓</p>
@@ -57,12 +73,6 @@
       </button>
     </div>
   {{else}}
-    {{if ge .PagesCrawled 100}}
-    <div class="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-[var(--radius-sm)] text-sm text-amber-800">
-      Ce site a plus de 100 pages. Seules les 100 premières ont été analysées.
-    </div>
-    {{end}}
-
     {{range .Groups}}
     <details class="mb-4 border border-[var(--color-border)] rounded-[var(--radius-md)] bg-[var(--color-surface)] open:shadow-sm" open>
       <summary class="flex items-center justify-between px-4 py-3 cursor-pointer select-none">
@@ -110,6 +120,13 @@
       {{end}}
     </div>
   </div>
+  {{end}}
+
+  {{/* >500 external links cap note */}}
+  {{if .ExtLinksTruncated}}
+  <p class="mt-8 text-xs text-[var(--color-muted)] text-center">
+    {{.ExtLinksFound}} liens externes détectés — seuls les 500 premiers ont été vérifiés.
+  </p>
   {{end}}
 
 {{end}}

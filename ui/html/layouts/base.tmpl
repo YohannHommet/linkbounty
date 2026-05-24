@@ -3,7 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{block "title" .}}LinkBounty — Vérificateur de liens brisés{{end}}</title>
+  <title>{{block "title" .}}LinkBounty — Vérificateur de liens brisés gratuit{{end}}</title>
+  <meta name="description" content="{{block "description" .}}Détectez les liens brisés de votre site en moins d'une minute. Gratuit, sans compte, sans plugin.{{end}}">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://linkbounty.io{{block "canonical" .}}/{{end}}">
+
+  {{/* Open Graph */}}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="LinkBounty">
+  <meta property="og:title" content="{{block "og:title" .}}LinkBounty — Free broken link checker{{end}}">
+  <meta property="og:description" content="{{block "og:description" .}}Find broken links on your site in under a minute. Free, no account, no plugin required.{{end}}">
+  <meta property="og:url" content="https://linkbounty.io{{block "og:url" .}}/{{end}}">
+
+  {{/* Twitter Card */}}
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{{block "twitter:title" .}}LinkBounty — Free broken link checker{{end}}">
+  <meta name="twitter:description" content="{{block "twitter:description" .}}Find broken links on your site in under a minute. Free, no account required.{{end}}">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
