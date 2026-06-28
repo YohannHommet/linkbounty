@@ -8,6 +8,14 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+type JobStatus string
+
+const (
+	StatusRunning JobStatus = "running"
+	StatusDone    JobStatus = "done"
+	StatusError   JobStatus = "error"
+)
+
 type Store struct {
 	db *sql.DB
 }
@@ -15,7 +23,7 @@ type Store struct {
 type Job struct {
 	ID            string
 	Domain        string
-	Status        string
+	Status        JobStatus
 	ErrorMsg      string
 	PagesCrawled  int
 	BrokenCount   int
@@ -28,7 +36,7 @@ type BrokenLink struct {
 	TargetLink string
 	StatusCode int
 	ErrorMsg   string
-	LinkType   string // "broken" | "redirect"
+	LinkType   string // "broken" | "redirect" | "unverifiable"
 }
 
 type ReportGroup struct {
@@ -41,6 +49,10 @@ func New(path string) (*Store, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
+	// Single writer: SQLite WAL serialises writes anyway; one open connection
+	// avoids SQLITE_BUSY contention from the connection pool attempting parallel writes.
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("ping db: %w", err)
 	}
@@ -58,6 +70,7 @@ func configure(db *sql.DB) error {
 		`PRAGMA journal_mode=WAL`,
 		`PRAGMA foreign_keys=ON`,
 		`PRAGMA wal_autocheckpoint=100`,
+		`PRAGMA busy_timeout=5000`, // wait up to 5 s before returning SQLITE_BUSY
 	}
 	for _, p := range pragmas {
 		if _, err := db.Exec(p); err != nil {
@@ -67,33 +80,51 @@ func configure(db *sql.DB) error {
 	return nil
 }
 
-func migrate(db *sql.DB) error {
-	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS jobs (
-			id              TEXT PRIMARY KEY,
-			domain          TEXT NOT NULL,
-			status          TEXT NOT NULL DEFAULT 'running',
-			error_msg       TEXT,
-			pages_crawled   INTEGER NOT NULL DEFAULT 0,
-			broken_count    INTEGER NOT NULL DEFAULT 0,
-			ext_links_found INTEGER NOT NULL DEFAULT 0,
-			created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-		);
-
-		CREATE TABLE IF NOT EXISTS broken_links (
-			id          INTEGER PRIMARY KEY AUTOINCREMENT,
-			job_id      TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-			source_page TEXT NOT NULL,
-			target_link TEXT NOT NULL,
-			status_code INTEGER NOT NULL DEFAULT 0,
-			error_msg   TEXT,
-			link_type   TEXT NOT NULL
-		);
-
-		CREATE INDEX IF NOT EXISTS idx_broken_links_job_id ON broken_links(job_id);
-	`)
-	return err
+// migrations is the ordered list of schema changes. Append only — never edit existing entries.
+var migrations = []string{
+	// v1 — initial schema
+	`CREATE TABLE IF NOT EXISTS jobs (
+		id              TEXT PRIMARY KEY,
+		domain          TEXT NOT NULL,
+		status          TEXT NOT NULL DEFAULT 'running',
+		error_msg       TEXT,
+		pages_crawled   INTEGER NOT NULL DEFAULT 0,
+		broken_count    INTEGER NOT NULL DEFAULT 0,
+		ext_links_found INTEGER NOT NULL DEFAULT 0,
+		created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE TABLE IF NOT EXISTS broken_links (
+		id          INTEGER PRIMARY KEY AUTOINCREMENT,
+		job_id      TEXT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+		source_page TEXT NOT NULL,
+		target_link TEXT NOT NULL,
+		status_code INTEGER NOT NULL DEFAULT 0,
+		error_msg   TEXT,
+		link_type   TEXT NOT NULL
+	)`,
+	`CREATE INDEX IF NOT EXISTS idx_broken_links_job_id ON broken_links(job_id)`,
 }
+
+func migrate(db *sql.DB) error {
+	// Use SQLite's built-in user_version pragma as a schema version counter.
+	var version int
+	if err := db.QueryRow(`PRAGMA user_version`).Scan(&version); err != nil {
+		return fmt.Errorf("read schema version: %w", err)
+	}
+
+	for i := version; i < len(migrations); i++ {
+		if _, err := db.Exec(migrations[i]); err != nil {
+			return fmt.Errorf("migration %d: %w", i+1, err)
+		}
+		// user_version cannot be set via a parameterised query
+		if _, err := db.Exec(fmt.Sprintf(`PRAGMA user_version = %d`, i+1)); err != nil {
+			return fmt.Errorf("set schema version %d: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+func (s *Store) Close() error { return s.db.Close() }
 
 func (s *Store) CreateJob(id, domain string) error {
 	_, err := s.db.Exec(

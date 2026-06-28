@@ -19,7 +19,7 @@ func newTestApp(t *testing.T) *App {
 	if err != nil {
 		t.Fatalf("db: %v", err)
 	}
-	t.Cleanup(func() {})
+	t.Cleanup(func() { db.Close() })
 
 	app, err := NewApp(db, &JobRegistry{}, "../../ui/html")
 	if err != nil {
@@ -69,10 +69,11 @@ func TestScanRejectsPrivateAddresses(t *testing.T) {
 		"http://169.254.1.1/",
 		"http://192.168.1.1/",
 	}
-	for _, u := range cases {
+	for i, u := range cases {
 		form := url.Values{"url": {u}}
 		req := httptest.NewRequest(http.MethodPost, "/scan", strings.NewReader(form.Encode()))
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.RemoteAddr = fmt.Sprintf("203.0.113.%d:9000", i+1) // unique public IP per case
 		w := httptest.NewRecorder()
 		app.handleScan(w, req)
 		if w.Code != http.StatusUnprocessableEntity {
@@ -132,7 +133,7 @@ func TestRateLimiterConcurrent(t *testing.T) {
 			form := url.Values{"url": {"https://example.com"}}
 			req := httptest.NewRequest(http.MethodPost, "/scan", strings.NewReader(form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			req.RemoteAddr = "10.0.0.1:9999" // same IP for all
+			req.RemoteAddr = "203.0.113.99:9999" // same public IP for all
 			w := httptest.NewRecorder()
 			app.handleScan(w, req)
 

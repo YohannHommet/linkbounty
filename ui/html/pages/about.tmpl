@@ -1,0 +1,84 @@
+{{define "title"}}À propos — LinkBounty, vérificateur de liens brisés gratuit{{end}}
+{{define "description"}}Pourquoi LinkBounty existe : un vérificateur de liens brisés gratuit, sans compte, pour les blogueurs et créateurs. Ce qu'il détecte et comment il fonctionne.{{end}}
+{{define "canonical"}}/a-propos{{end}}
+{{define "og:url"}}/a-propos{{end}}
+{{define "og:title"}}À propos de LinkBounty{{end}}
+{{define "og:description"}}Un vérificateur de liens brisés gratuit, sans compte, sans plugin. Découvrez pourquoi les liens brisés comptent et comment LinkBounty les traque.{{end}}
+
+{{define "jsonld"}}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"AboutPage","name":"À propos de LinkBounty","url":"https://linkbounty.io/a-propos","inLanguage":"fr-FR","isPartOf":{"@id":"https://linkbounty.io/#website"},"about":{"@id":"https://linkbounty.io/#organization"}}
+</script>
+{{end}}
+
+{{define "content"}}
+<style>
+  .about-hero { border-bottom: 1px solid var(--rule); padding: 72px 0; }
+  .about-hero h1 { font-size: clamp(40px, 5.5vw, 72px); font-weight: 900; letter-spacing: -.04em; text-transform: uppercase; line-height: .95; margin-top: 22px; }
+  .about-hero h1 em { font-style: normal; color: var(--signal); }
+  .about-lead { margin-top: 26px; font-size: 18px; line-height: 1.6; color: var(--ink-mid); max-width: 660px; }
+
+  .about-block { border-bottom: 1px solid var(--rule-light); padding: 48px 0; display: grid; grid-template-columns: 1fr 1.7fr; gap: 0 64px; align-items: start; }
+  .about-block h2 { font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-light); }
+  .about-block .body { font-size: 16px; line-height: 1.7; color: var(--ink-mid); }
+  .about-block .body strong { color: var(--ink); font-weight: 700; }
+  .about-block .body p + p { margin-top: 14px; }
+
+  .about-cta { padding: 64px 0; text-align: center; }
+  .about-cta p { font-size: clamp(24px, 3vw, 34px); font-weight: 900; letter-spacing: -.03em; text-transform: uppercase; margin-bottom: 24px; }
+
+  @media (max-width: 900px) {
+    .about-block { grid-template-columns: 1fr; gap: 12px; padding: 36px 0; }
+  }
+</style>
+
+<section class="about-hero">
+  <div class="container">
+    <span class="eyebrow">À propos</span>
+    <h1>Un problème invisible,<br>un outil <em>simple.</em></h1>
+    <p class="about-lead">LinkBounty est un vérificateur de liens brisés gratuit, pensé pour les blogueurs et les créateurs de contenu. Collez l'URL de votre site, recevez un rapport partageable. Pas de compte, pas de plugin, pas de jargon.</p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="about-block">
+      <h2>Le problème</h2>
+      <div class="body">
+        <p>Les liens brisés s'accumulent en silence. Un article qui cite une source disparue, un lien d'affiliation expiré, une page renommée sans redirection.</p>
+        <p>Le résultat&nbsp;: vos lecteurs tombent sur des erreurs <strong>404</strong>, votre crédibilité s'érode, et les moteurs de recherche gaspillent leur budget d'exploration sur des impasses. Personne ne vous prévient — les liens cassent sans bruit.</p>
+      </div>
+    </div>
+
+    <div class="about-block">
+      <h2>Ce que fait LinkBounty</h2>
+      <div class="body">
+        <p>On parcourt jusqu'à <strong>100 pages</strong> internes depuis l'URL que vous donnez, puis on teste chaque lien externe un par un (requête <strong>HEAD</strong>, puis <strong>GET</strong> en repli).</p>
+        <p>On classe ensuite les résultats&nbsp;: liens morts (404, 410), erreurs serveur (500), redirections (301, 302) et liens non vérifiables — ces sites qui bloquent les robots, comme LinkedIn. On respecte toujours votre <strong>robots.txt</strong>.</p>
+      </div>
+    </div>
+
+    <div class="about-block">
+      <h2>Notre parti pris</h2>
+      <div class="body">
+        <p><strong>Gratuit, sans compte, sans plugin.</strong> On lit votre site comme un visiteur ordinaire&nbsp;: rien à installer, aucune balise à coller.</p>
+        <p>Chaque rapport vit <strong>7 jours</strong>, puis disparaît automatiquement. Pas de suivi publicitaire, pas de revente de données. Un outil, une réponse, c'est tout.</p>
+      </div>
+    </div>
+
+    <div class="about-block">
+      <h2>Pour qui</h2>
+      <div class="body">
+        <p>Blogueurs, créateurs de contenu, propriétaires de petits sites, indépendants&nbsp;: toute personne qui publie et veut garder ses liens en bon état, sans usine à gaz ni abonnement.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="about-cta">
+  <div class="container">
+    <p>Prêt à inspecter votre site&nbsp;?</p>
+    <a href="/" class="btn">Lancer une inspection gratuite</a>
+  </div>
+</section>
+{{end}}

@@ -1,0 +1,18 @@
+{
+  "name": "LinkBounty — Vérificateur de liens brisés",
+  "short_name": "LinkBounty",
+  "description": "Détectez les liens brisés de votre site en moins d'une minute. Gratuit, sans compte, sans plugin.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ff4124",
+  "icons": [
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/static/favicon.svg", "type": "image/svg+xml", "sizes": "any" }
+  ]
+}

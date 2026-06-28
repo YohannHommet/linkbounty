@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"linkbounty/internal/crawler"
+	"linkbounty/internal/database"
 )
 
 const rateLimitWindow = 5 * time.Minute
@@ -54,17 +56,11 @@ func (a *App) handleScan(w http.ResponseWriter, r *http.Request) {
 
 	ip := clientIP(r)
 
-	a.rateMu.Lock()
-	lastScan, seen := a.rateMap[ip]
-	if seen && time.Since(lastScan) < rateLimitWindow {
-		remaining := rateLimitWindow - time.Since(lastScan)
-		a.rateMu.Unlock()
+	if ok, retryAfter := a.rate.Allow(ip); !ok {
 		a.renderError(w, r, http.StatusTooManyRequests,
-			fmt.Sprintf("Un scan par IP toutes les 5 minutes. Réessaie dans %ds.", int(remaining.Seconds())))
+			fmt.Sprintf("Un scan par IP toutes les 5 minutes. Réessaie dans %ds.", int(retryAfter.Seconds())))
 		return
 	}
-	a.rateMap[ip] = time.Now()
-	a.rateMu.Unlock()
 
 	// global concurrency cap
 	select {
@@ -90,48 +86,64 @@ func (a *App) handleScan(w http.ResponseWriter, r *http.Request) {
 		defer func() { <-a.scanSem }()
 		defer a.Registry.Delete(jobID)
 
-		result, err := crawler.Run(rawURL, func(n int) {
-			state.PagesCrawled.Store(int64(n))
-		})
-		if err != nil {
-			state.Status.Store(StatusError)
-			state.ErrorMsg.Store(err.Error())
-			a.DB.UpdateJobError(jobID, err.Error())
-			return
-		}
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+		defer cancel()
 
-		brokenCount := 0
-		for _, l := range result.Links {
-			if l.LinkType == "broken" {
-				brokenCount++
-			}
-		}
-
-		if err := a.DB.SaveLinks(jobID, result.Links); err != nil {
-			state.Status.Store(StatusError)
-			state.ErrorMsg.Store("Erreur lors de la sauvegarde du rapport.")
-			a.DB.UpdateJobError(jobID, "save links: "+err.Error())
-			return
-		}
-
-		if err := a.DB.UpdateJobDone(jobID, result.PagesCrawled, brokenCount, result.ExtLinksFound); err != nil {
-			state.Status.Store(StatusError)
-			state.ErrorMsg.Store("Erreur lors de la finalisation du rapport.")
-			a.DB.UpdateJobError(jobID, "update done: "+err.Error())
-			return
-		}
-
-		state.Status.Store(StatusDone)
+		runJob(ctx, jobID, rawURL, state, a.DB)
 	}()
 
 	http.Redirect(w, r, "/r/"+jobID, http.StatusFound)
 }
 
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		parts := strings.SplitN(xff, ",", 2)
-		return strings.TrimSpace(parts[0])
+// runJob executes the crawl and persists results. It updates state throughout
+// so in-flight polls reflect live progress.
+func runJob(ctx context.Context, jobID, rawURL string, state *JobState, db *database.Store) {
+	result, err := crawler.Run(ctx, rawURL, func(n int) {
+		state.PagesCrawled.Store(int64(n))
+	})
+	if err != nil {
+		state.SetStatus(database.StatusError)
+		state.SetErrorMsg(err.Error())
+		db.UpdateJobError(jobID, err.Error())
+		return
 	}
+
+	dbLinks := make([]database.BrokenLink, len(result.Links))
+	brokenCount := 0
+	for i, l := range result.Links {
+		dbLinks[i] = database.BrokenLink{
+			SourcePage: l.SourcePage,
+			TargetLink: l.TargetLink,
+			StatusCode: l.StatusCode,
+			ErrorMsg:   l.ErrorMsg,
+			LinkType:   l.LinkType,
+		}
+		if l.LinkType == "broken" {
+			brokenCount++
+		}
+	}
+
+	if err := db.SaveLinks(jobID, dbLinks); err != nil {
+		state.SetStatus(database.StatusError)
+		state.SetErrorMsg("Erreur lors de la sauvegarde du rapport.")
+		db.UpdateJobError(jobID, "save links: "+err.Error())
+		return
+	}
+
+	if err := db.UpdateJobDone(jobID, result.PagesCrawled, brokenCount, result.ExtLinksFound); err != nil {
+		state.SetStatus(database.StatusError)
+		state.SetErrorMsg("Erreur lors de la finalisation du rapport.")
+		db.UpdateJobError(jobID, "update done: "+err.Error())
+		return
+	}
+
+	state.SetStatus(database.StatusDone)
+}
+
+func clientIP(r *http.Request) string {
+	// Trust only RemoteAddr — Caddy (our only supported proxy) rewrites it.
+	// Trusting X-Forwarded-For would allow any client to spoof their IP and
+	// bypass the per-IP rate limit by connecting directly to port 8080.
 	ip := r.RemoteAddr
 	if colon := strings.LastIndex(ip, ":"); colon != -1 {
 		return ip[:colon]

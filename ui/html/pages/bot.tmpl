@@ -1,0 +1,112 @@
+{{define "title"}}LinkBountyBot · LinkBounty{{end}}
+{{define "description"}}Informations sur LinkBountyBot, le robot d'exploration de LinkBounty : comment il s'identifie, ce qu'il fait, et comment le bloquer si nécessaire.{{end}}
+{{define "robots"}}noindex, follow{{end}}
+{{define "canonical"}}/bot{{end}}
+{{define "og:url"}}/bot{{end}}
+{{define "og:title"}}LinkBountyBot — le crawler de LinkBounty{{end}}
+{{define "og:description"}}Vous avez vu LinkBountyBot dans vos logs ? Découvrez ce qu'il fait, son User-Agent exact, et comment le bloquer facilement.{{end}}
+
+{{define "content"}}
+<style>
+  .bot-hero { border-bottom: 1px solid var(--rule); padding: 72px 0; }
+  .bot-hero h1 { font-size: clamp(36px, 5vw, 64px); font-weight: 900; letter-spacing: -.04em; text-transform: uppercase; line-height: .95; margin-top: 22px; }
+  .bot-hero h1 em { font-style: normal; color: var(--signal); }
+  .bot-lead { margin-top: 26px; font-size: 18px; line-height: 1.6; color: var(--ink-mid); max-width: 660px; }
+
+  .bot-block { border-bottom: 1px solid var(--rule-light); padding: 48px 0; display: grid; grid-template-columns: 1fr 1.7fr; gap: 0 64px; align-items: start; }
+  .bot-block h2 { font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-light); }
+  .bot-block .body { font-size: 16px; line-height: 1.7; color: var(--ink-mid); }
+  .bot-block .body strong { color: var(--ink); font-weight: 700; }
+  .bot-block .body p + p { margin-top: 14px; }
+  .bot-block .body code {
+    font-family: 'Courier New', Courier, monospace; font-size: 13px;
+    background: var(--wash); border: 1px solid var(--rule-light);
+    padding: 2px 7px; color: var(--ink);
+  }
+  .bot-block .body pre {
+    background: var(--wash); border: 1px solid var(--rule-light);
+    padding: 16px 20px; font-family: 'Courier New', Courier, monospace;
+    font-size: 13px; line-height: 1.6; color: var(--ink); overflow-x: auto;
+    margin-top: 14px;
+  }
+
+  .bot-cta { padding: 64px 0; text-align: center; }
+  .bot-cta p { font-size: clamp(22px, 3vw, 32px); font-weight: 900; letter-spacing: -.03em; text-transform: uppercase; margin-bottom: 24px; }
+
+  @media (max-width: 900px) {
+    .bot-block { grid-template-columns: 1fr; gap: 12px; padding: 36px 0; }
+  }
+</style>
+
+<section class="bot-hero">
+  <div class="container">
+    <span class="eyebrow">Bot</span>
+    <h1>LinkBountyBot,<br>le crawler de <em>LinkBounty.</em></h1>
+    <p class="bot-lead">Vous avez vu <strong>LinkBountyBot</strong> dans vos journaux d'accès ? Cette page explique ce qu'il est, ce qu'il fait, et comment le bloquer si vous le souhaitez.</p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+
+    <div class="bot-block">
+      <h2>Ce qu'est LinkBountyBot</h2>
+      <div class="body">
+        <p>LinkBountyBot est le robot d'exploration utilisé par <strong>LinkBounty</strong>, un service gratuit de détection de liens brisés. Il est déclenché uniquement à la demande d'un utilisateur qui soumet une URL pour analyse.</p>
+        <p>Il s'agit d'un crawler ponctuel — il ne revisite pas votre site périodiquement ni de façon automatique. Une visite correspond à une demande d'inspection initiée par un humain.</p>
+      </div>
+    </div>
+
+    <div class="bot-block">
+      <h2>User-Agent exact</h2>
+      <div class="body">
+        <p>LinkBountyBot s'identifie toujours avec le User-Agent suivant :</p>
+        <pre>LinkBountyBot/1.0 (+https://linkbounty.io/bot)</pre>
+        <p>Si vous voyez ce User-Agent dans vos logs, c'est bien notre robot. Il ne se dissimule jamais derrière un autre agent.</p>
+      </div>
+    </div>
+
+    <div class="bot-block">
+      <h2>Ce qu'il fait</h2>
+      <div class="body">
+        <p>LinkBountyBot visite jusqu'à <strong>100 pages internes</strong> de votre site à partir de l'URL soumise, puis teste chaque lien externe trouvé (requête <strong>HEAD</strong>, puis <strong>GET</strong> en repli).</p>
+        <p>Son seul objectif est de détecter les liens brisés. Il <strong>ne stocke pas le contenu</strong> de vos pages — seules les URLs et les codes HTTP de réponse sont conservés, et uniquement le temps du rapport (7 jours).</p>
+      </div>
+    </div>
+
+    <div class="bot-block">
+      <h2>Respect de robots.txt</h2>
+      <div class="body">
+        <p>LinkBountyBot <strong>respecte intégralement votre fichier <code>robots.txt</code></strong>. Les règles <code>Disallow</code> et les directives <code>Crawl-delay</code> sont honorées avant tout accès à vos pages.</p>
+        <p>Si une section de votre site est interdite aux robots, LinkBountyBot ne la visitera pas, même si un utilisateur soumet une URL qui y mène.</p>
+      </div>
+    </div>
+
+    <div class="bot-block">
+      <h2>Comment le bloquer</h2>
+      <div class="body">
+        <p>Pour empêcher LinkBountyBot d'accéder à tout ou partie de votre site, ajoutez une règle dans votre <code>robots.txt</code> :</p>
+        <pre>User-agent: LinkBountyBot
+Disallow: /</pre>
+        <p>Pour bloquer seulement certains répertoires, remplacez <code>/</code> par le chemin concerné. Le changement prend effet immédiatement lors de la prochaine tentative de visite.</p>
+      </div>
+    </div>
+
+    <div class="bot-block">
+      <h2>Confidentialité</h2>
+      <div class="body">
+        <p>LinkBountyBot ne collecte pas de données personnelles sur vos visiteurs. Il accède uniquement aux pages publiques de votre site, comme le ferait n'importe quel navigateur.</p>
+        <p>Le contenu des pages n'est pas sauvegardé ni transmis à des tiers. Seuls les résultats du scan (URLs et codes de réponse HTTP) sont conservés temporairement dans le rapport.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="bot-cta">
+  <div class="container">
+    <p>Envie de vérifier vos propres liens&nbsp;?</p>
+    <a href="/" class="btn">Lancer une inspection gratuite</a>
+  </div>
+</section>
+{{end}}

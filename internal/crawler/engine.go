@@ -1,7 +1,10 @@
 package crawler
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -10,27 +13,99 @@ import (
 	"time"
 
 	"github.com/gocolly/colly/v2"
-	"linkbounty/internal/database"
 )
 
-const (
-	maxPages         = 100
-	maxExternalLinks = 500
-	externalWorkers  = 20
-	userAgent        = "LinkBountyBot/1.0 (+https://linkbounty.io/bot)"
-	requestTimeout   = 8 * time.Second
-)
+const userAgent = "LinkBountyBot/1.0 (+https://linkbounty.io/bot)"
+
+// Config holds the tunable limits for a crawl. Use DefaultConfig for production
+// values; tests construct small configs to exercise cap behaviour cheaply.
+type Config struct {
+	MaxPages         int           // max internal pages to crawl
+	MaxExternalLinks int           // max external links to verify
+	ExternalWorkers  int           // parallel external-link checkers
+	MaxDepth         int           // colly crawl depth
+	RequestTimeout   time.Duration // per-request timeout for external checks
+}
+
+// DefaultConfig returns the production crawl limits.
+func DefaultConfig() Config {
+	return Config{
+		MaxPages:         100,
+		MaxExternalLinks: 500,
+		ExternalWorkers:  20,
+		MaxDepth:         4,
+		RequestTimeout:   8 * time.Second,
+	}
+}
+
+// Link describes a checked external link and its outcome.
+type Link struct {
+	SourcePage string
+	TargetLink string
+	StatusCode int
+	ErrorMsg   string
+	LinkType   string // "broken" | "redirect" | "unverifiable"
+}
 
 type ProgressFunc func(pages int)
 
 // Result holds everything the caller needs after a crawl.
 type Result struct {
-	Links         []database.BrokenLink
+	Links         []Link
 	PagesCrawled  int
 	ExtLinksFound int // total external links encountered, including those skipped by cap
 }
 
-func Run(startURL string, onProgress ProgressFunc) (Result, error) {
+// dialContextFunc is the dial function used for external link checks.
+// Tests override this with a permissive dialer to allow httptest.Server on 127.0.0.1.
+var dialContextFunc = safeDialContext
+
+// SetDialContextFunc replaces the dial function used by external link checks.
+// Intended for tests only.
+func SetDialContextFunc(fn func(ctx context.Context, network, address string) (net.Conn, error)) {
+	dialContextFunc = fn
+}
+
+// safeDialContext wraps the default dialer and rejects resolved private/loopback
+// addresses on every dial, preventing DNS-rebinding SSRF.
+func safeDialContext(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	ips, err := net.DefaultResolver.LookupHost(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	for _, rawIP := range ips {
+		ip := net.ParseIP(rawIP)
+		if ip == nil {
+			continue
+		}
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+			return nil, fmt.Errorf("SSRF: connection to private address %s denied", ip)
+		}
+	}
+	d := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+	return d.DialContext(ctx, network, net.JoinHostPort(ips[0], port))
+}
+
+func safeTransport(workers int) *http.Transport {
+	return &http.Transport{
+		DialContext:         dialContextFunc,
+		MaxIdleConnsPerHost: workers,
+		MaxIdleConns:        200,
+		IdleConnTimeout:     30 * time.Second,
+	}
+}
+
+// Run crawls startURL with the default production config.
+func Run(ctx context.Context, startURL string, onProgress ProgressFunc) (Result, error) {
+	return RunWithConfig(ctx, DefaultConfig(), startURL, onProgress)
+}
+
+// RunWithConfig crawls startURL with explicit limits.
+func RunWithConfig(ctx context.Context, cfg Config, startURL string, onProgress ProgressFunc) (Result, error) {
 	parsed, err := url.Parse(startURL)
 	if err != nil {
 		return Result{}, fmt.Errorf("invalid url: %w", err)
@@ -39,16 +114,17 @@ func Run(startURL string, onProgress ProgressFunc) (Result, error) {
 	siteHost := parsed.Host     // host:port — distinguishes same-host servers on different ports
 
 	var (
-		links     []database.BrokenLink
+		links     []Link
 		mu        sync.Mutex
 		pageCount atomic.Int64
-		extSem    = make(chan struct{}, externalWorkers)
+		extSem    = make(chan struct{}, cfg.ExternalWorkers)
 		extCount  atomic.Int64
 		extWg     sync.WaitGroup
 	)
 
 	client := &http.Client{
-		Timeout: requestTimeout,
+		Transport: safeTransport(cfg.ExternalWorkers),
+		Timeout:   cfg.RequestTimeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse // capture redirects, don't follow
 		},
@@ -56,7 +132,7 @@ func Run(startURL string, onProgress ProgressFunc) (Result, error) {
 
 	c := colly.NewCollector(
 		colly.AllowedDomains(domain),
-		colly.MaxDepth(4),
+		colly.MaxDepth(cfg.MaxDepth),
 		colly.Async(true),
 		colly.UserAgent(userAgent),
 	)
@@ -71,7 +147,7 @@ func Run(startURL string, onProgress ProgressFunc) (Result, error) {
 	c.OnHTML("a[href]", func(e *colly.HTMLElement) {
 		raw := e.Attr("href")
 		abs := e.Request.AbsoluteURL(raw)
-		if abs == "" || strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "javascript:") {
+		if abs == "" || strings.HasPrefix(raw, "#") {
 			return
 		}
 
@@ -80,12 +156,17 @@ func Run(startURL string, onProgress ProgressFunc) (Result, error) {
 			return
 		}
 
+		// skip non-HTTP schemes — mailto:, tel:, javascript:, ftp:, etc.
+		if target.Scheme != "http" && target.Scheme != "https" {
+			return
+		}
+
 		if strings.EqualFold(target.Host, siteHost) {
 			// internal page — visit if under limit
-			if pageCount.Load() < maxPages {
-				pageCount.Add(1)
+			if pageCount.Load() < int64(cfg.MaxPages) {
+				n := pageCount.Add(1)
 				if onProgress != nil {
-					onProgress(int(pageCount.Load()))
+					onProgress(int(n))
 				}
 				e.Request.Visit(abs)
 			}
@@ -94,17 +175,21 @@ func Run(startURL string, onProgress ProgressFunc) (Result, error) {
 
 		// external link — always count, only check if under cap
 		n := extCount.Add(1)
-		if n > maxExternalLinks {
+		if n > int64(cfg.MaxExternalLinks) {
 			return
 		}
 
 		extWg.Add(1)
 		go func(sourcePage, targetLink string) {
 			defer extWg.Done()
-			extSem <- struct{}{}
+			select {
+			case extSem <- struct{}{}:
+			case <-ctx.Done():
+				return
+			}
 			defer func() { <-extSem }()
 
-			result := checkExternal(client, sourcePage, targetLink)
+			result := checkExternal(ctx, client, sourcePage, targetLink)
 			if result != nil {
 				mu.Lock()
 				links = append(links, *result)
@@ -120,16 +205,16 @@ func Run(startURL string, onProgress ProgressFunc) (Result, error) {
 	extWg.Wait()
 
 	return Result{
-		Links:        links,
-		PagesCrawled: int(pageCount.Load()),
+		Links:         links,
+		PagesCrawled:  int(pageCount.Load()),
 		ExtLinksFound: int(extCount.Load()),
 	}, nil
 }
 
-func checkExternal(client *http.Client, sourcePage, targetLink string) *database.BrokenLink {
-	req, err := http.NewRequest(http.MethodHead, targetLink, nil)
+func checkExternal(ctx context.Context, client *http.Client, sourcePage, targetLink string) *Link {
+	code, err := headWithGETFallback(ctx, client, targetLink)
 	if err != nil {
-		return &database.BrokenLink{
+		return &Link{
 			SourcePage: sourcePage,
 			TargetLink: targetLink,
 			StatusCode: 0,
@@ -137,58 +222,28 @@ func checkExternal(client *http.Client, sourcePage, targetLink string) *database
 			LinkType:   "broken",
 		}
 	}
-	req.Header.Set("User-Agent", userAgent)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		// HEAD failed — try GET
-		req2, _ := http.NewRequest(http.MethodGet, targetLink, nil)
-		req2.Header.Set("User-Agent", userAgent)
-		resp, err = client.Do(req2)
-		if err != nil {
-			return &database.BrokenLink{
-				SourcePage: sourcePage,
-				TargetLink: targetLink,
-				StatusCode: 0,
-				ErrorMsg:   err.Error(),
-				LinkType:   "broken",
-			}
-		}
-	}
-	defer resp.Body.Close()
-
-	code := resp.StatusCode
-
-	// 405: HEAD not allowed — retry with GET
-	if code == http.StatusMethodNotAllowed || code == 501 {
-		req2, _ := http.NewRequest(http.MethodGet, targetLink, nil)
-		req2.Header.Set("User-Agent", userAgent)
-		resp2, err := client.Do(req2)
-		if err != nil {
-			return &database.BrokenLink{
-				SourcePage: sourcePage,
-				TargetLink: targetLink,
-				StatusCode: 0,
-				ErrorMsg:   err.Error(),
-				LinkType:   "broken",
-			}
-		}
-		defer resp2.Body.Close()
-		code = resp2.StatusCode
-	}
 
 	switch {
 	case code >= 200 && code < 300:
 		return nil // OK
 	case code >= 300 && code < 400:
-		return &database.BrokenLink{
+		return &Link{
 			SourcePage: sourcePage,
 			TargetLink: targetLink,
 			StatusCode: code,
 			LinkType:   "redirect",
 		}
+	case code == 999:
+		// 999 is LinkedIn's (and some CDNs') anti-bot response — the link is likely valid
+		return &Link{
+			SourcePage: sourcePage,
+			TargetLink: targetLink,
+			StatusCode: code,
+			ErrorMsg:   "bot-blocking response (999) — link likely valid",
+			LinkType:   "unverifiable",
+		}
 	default:
-		return &database.BrokenLink{
+		return &Link{
 			SourcePage: sourcePage,
 			TargetLink: targetLink,
 			StatusCode: code,
@@ -196,4 +251,42 @@ func checkExternal(client *http.Client, sourcePage, targetLink string) *database
 			LinkType:   "broken",
 		}
 	}
+}
+
+// headWithGETFallback tries HEAD first; falls back to GET on network error or 405/501.
+func headWithGETFallback(ctx context.Context, client *http.Client, targetLink string) (int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, targetLink, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		// HEAD failed — fall back to GET
+		return doGET(ctx, client, targetLink)
+	}
+	defer resp.Body.Close()
+
+	code := resp.StatusCode
+	if code == http.StatusMethodNotAllowed || code == 501 {
+		io.Copy(io.Discard, resp.Body) //nolint:errcheck
+		resp.Body.Close()
+		return doGET(ctx, client, targetLink)
+	}
+	return code, nil
+}
+
+func doGET(ctx context.Context, client *http.Client, targetLink string) (int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetLink, nil)
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("User-Agent", userAgent)
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode, nil
 }

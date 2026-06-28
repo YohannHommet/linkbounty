@@ -10,15 +10,17 @@ ExecStart=/opt/linkbounty/linkbounty
 Restart=on-failure
 RestartSec=5s
 
+# PLACEHOLDER: adjust domain in SITE_URL if deploying under a different hostname
 Environment=ADDR=:8080
-Environment=DB_PATH=/opt/linkbounty/linkbounty.db
+Environment=DB_PATH=/opt/linkbounty/data/linkbounty.db
 Environment=UI_DIR=/opt/linkbounty/ui/html
+Environment=SITE_URL=https://linkbounty.io
 
-# Security hardening
+# Hardening: binary + templates are read-only; only the data dir needs writes
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ReadWritePaths=/opt/linkbounty
+ReadWritePaths=/opt/linkbounty/data
 
 [Install]
 WantedBy=multi-user.target

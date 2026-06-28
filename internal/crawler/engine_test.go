@@ -1,12 +1,22 @@
 package crawler
 
 import (
+	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
+
+func TestMain(m *testing.M) {
+	// Tests use httptest.Server on 127.0.0.1; override the safe dialer so they can connect.
+	d := &net.Dialer{}
+	SetDialContextFunc(d.DialContext)
+	m.Run()
+}
 
 func mockSite(t *testing.T, pages map[string]string) *httptest.Server {
 	t.Helper()
@@ -33,7 +43,7 @@ func TestRunFindsNoBrokenLinksOnCleanSite(t *testing.T) {
 	})
 	defer site.Close()
 
-	result, err := Run(site.URL+"/", nil)
+	result, err := Run(context.Background(), site.URL+"/", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -61,7 +71,7 @@ func TestRunDetectsBrokenExternalLinks(t *testing.T) {
 	})
 	defer site.Close()
 
-	result, err := Run(site.URL+"/", nil)
+	result, err := Run(context.Background(), site.URL+"/", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -91,7 +101,7 @@ func TestRunDetectsRedirects(t *testing.T) {
 	})
 	defer site.Close()
 
-	result, err := Run(site.URL+"/", nil)
+	result, err := Run(context.Background(), site.URL+"/", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -108,9 +118,9 @@ func TestRunDetectsRedirects(t *testing.T) {
 }
 
 func TestRunFallsBackToGETOn405(t *testing.T) {
-	calls := 0
+	var calls atomic.Int64
 	ext := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		calls++
+		calls.Add(1)
 		if r.Method == http.MethodHead {
 			w.WriteHeader(http.StatusMethodNotAllowed)
 			return
@@ -124,7 +134,7 @@ func TestRunFallsBackToGETOn405(t *testing.T) {
 	})
 	defer site.Close()
 
-	result, err := Run(site.URL+"/", nil)
+	result, err := Run(context.Background(), site.URL+"/", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -133,8 +143,8 @@ func TestRunFallsBackToGETOn405(t *testing.T) {
 			t.Errorf("405→GET fallback should succeed, but link marked broken: %+v", l)
 		}
 	}
-	if calls < 2 {
-		t.Errorf("expected at least 2 calls (HEAD + GET fallback), got %d", calls)
+	if calls.Load() < 2 {
+		t.Errorf("expected at least 2 calls (HEAD + GET fallback), got %d", calls.Load())
 	}
 }
 
@@ -154,12 +164,55 @@ func TestRunExtLinksFoundCount(t *testing.T) {
 	})
 	defer site.Close()
 
-	result, err := Run(site.URL+"/", nil)
+	result, err := Run(context.Background(), site.URL+"/", nil)
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	if result.ExtLinksFound != 3 {
 		t.Errorf("ExtLinksFound = %d, want 3", result.ExtLinksFound)
+	}
+}
+
+func TestRunWithConfigCapsExternalChecks(t *testing.T) {
+	var checks atomic.Int64
+	ext := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checks.Add(1)
+		w.WriteHeader(http.StatusNotFound) // broken, so each check produces a Link
+	}))
+	defer ext.Close()
+
+	// 5 external links, but cap verification at 2
+	site := mockSite(t, map[string]string{
+		"/": fmt.Sprintf(`<html><body>
+			<a href="%s/a">a</a><a href="%s/b">b</a><a href="%s/c">c</a>
+			<a href="%s/d">d</a><a href="%s/e">e</a>
+		</body></html>`, ext.URL, ext.URL, ext.URL, ext.URL, ext.URL),
+	})
+	defer site.Close()
+
+	cfg := DefaultConfig()
+	cfg.MaxExternalLinks = 2
+
+	result, err := RunWithConfig(context.Background(), cfg, site.URL+"/", nil)
+	if err != nil {
+		t.Fatalf("RunWithConfig: %v", err)
+	}
+	// ExtLinksFound counts every encountered link (drives the SPA/truncation note)…
+	if result.ExtLinksFound != 5 {
+		t.Errorf("ExtLinksFound = %d, want 5 (all encountered)", result.ExtLinksFound)
+	}
+	// …but the cap bounds how many are actually dialed.
+	if checks.Load() > 2 {
+		t.Errorf("performed %d external checks, want <= 2 (cap)", checks.Load())
+	}
+	broken := 0
+	for _, l := range result.Links {
+		if l.LinkType == "broken" {
+			broken++
+		}
+	}
+	if broken > 2 {
+		t.Errorf("recorded %d broken links, want <= 2 (cap)", broken)
 	}
 }
 
@@ -172,7 +225,7 @@ func TestRunProgressCallback(t *testing.T) {
 	defer site.Close()
 
 	var maxSeen int
-	Run(site.URL+"/", func(n int) {
+	Run(context.Background(), site.URL+"/", func(n int) {
 		if n > maxSeen {
 			maxSeen = n
 		}

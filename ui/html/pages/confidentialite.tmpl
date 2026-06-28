@@ -1,0 +1,97 @@
+{{define "title"}}Confidentialité · LinkBounty{{end}}
+{{define "description"}}Politique de confidentialité de LinkBounty : quelles données sont traitées, combien de temps elles sont conservées, et vos droits. Pas de compte, pas de cookies de suivi, pas de revente.{{end}}
+{{define "canonical"}}/confidentialite{{end}}
+{{define "og:url"}}/confidentialite{{end}}
+{{define "og:title"}}Confidentialité — LinkBounty{{end}}
+{{define "og:description"}}Politique de confidentialité de LinkBounty : données traitées, durée de conservation, absence de cookies de suivi et de revente de données.{{end}}
+
+{{define "content"}}
+<style>
+  .privacy-hero { border-bottom: 1px solid var(--rule); padding: 72px 0; }
+  .privacy-hero h1 { font-size: clamp(36px, 5vw, 64px); font-weight: 900; letter-spacing: -.04em; text-transform: uppercase; line-height: .95; margin-top: 22px; }
+  .privacy-hero h1 em { font-style: normal; color: var(--signal); }
+  .privacy-lead { margin-top: 26px; font-size: 18px; line-height: 1.6; color: var(--ink-mid); max-width: 660px; }
+
+  .privacy-block { border-bottom: 1px solid var(--rule-light); padding: 48px 0; display: grid; grid-template-columns: 1fr 1.7fr; gap: 0 64px; align-items: start; }
+  .privacy-block h2 { font-size: 12px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-light); }
+  .privacy-block .body { font-size: 16px; line-height: 1.7; color: var(--ink-mid); }
+  .privacy-block .body strong { color: var(--ink); font-weight: 700; }
+  .privacy-block .body p + p { margin-top: 14px; }
+
+  .privacy-cta { padding: 64px 0; text-align: center; }
+  .privacy-cta p { font-size: clamp(20px, 2.5vw, 28px); font-weight: 900; letter-spacing: -.03em; text-transform: uppercase; margin-bottom: 24px; }
+
+  @media (max-width: 900px) {
+    .privacy-block { grid-template-columns: 1fr; gap: 12px; padding: 36px 0; }
+  }
+</style>
+
+<section class="privacy-hero">
+  <div class="container">
+    <span class="eyebrow">Confidentialité</span>
+    <h1>Vos données,<br>notre <em>responsabilité.</em></h1>
+    <p class="privacy-lead">LinkBounty est conçu pour traiter le minimum de données nécessaires. Cette page détaille honnêtement ce qui est collecté, pourquoi, et pendant combien de temps.</p>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+
+    <div class="privacy-block">
+      <h2>Données traitées</h2>
+      <div class="body">
+        <p>Lors d'un scan, LinkBounty traite uniquement <strong>l'URL soumise</strong> et les résultats de l'exploration : liste des pages visitées, liens externes trouvés, codes HTTP de réponse et éventuels messages d'erreur.</p>
+        <p>Aucune information personnelle identifiable n'est requise. Vous n'avez pas besoin de compte, d'adresse e-mail ou de nom pour utiliser le service.</p>
+      </div>
+    </div>
+
+    <div class="privacy-block">
+      <h2>Durée de conservation</h2>
+      <div class="body">
+        <p>Les rapports de scan sont <strong>automatiquement supprimés après 7 jours</strong>. Passé ce délai, aucune trace du scan n'est conservée dans nos bases de données.</p>
+        <p>Si vous souhaitez conserver un rapport, téléchargez-le ou partagez-en le lien avant l'expiration.</p>
+      </div>
+    </div>
+
+    <div class="privacy-block">
+      <h2>Cookies &amp; traçage</h2>
+      <div class="body">
+        <p>LinkBounty <strong>n'utilise pas de cookies de suivi</strong> ni d'outils d'analyse comportementale (Google Analytics, Mixpanel, pixels publicitaires, etc.).</p>
+        <p>Aucun identifiant persistant n'est déposé sur votre appareil. Aucun tiers de traçage ne reçoit d'information vous concernant via notre service.</p>
+      </div>
+    </div>
+
+    <div class="privacy-block">
+      <h2>Logs serveur</h2>
+      <div class="body">
+        <p>Comme tout serveur web, LinkBounty génère des <strong>logs techniques minimaux</strong> (méthode HTTP, chemin demandé, code de réponse, durée). Ces logs servent uniquement au diagnostic d'incidents.</p>
+        <p>Conformément à notre engagement pour la vie privée, les adresses IP et chaînes de requête ne sont <strong>pas enregistrées</strong> dans ces logs.</p>
+      </div>
+    </div>
+
+    <div class="privacy-block">
+      <h2>Partage &amp; revente</h2>
+      <div class="body">
+        <p>Les données de vos scans ne sont <strong>jamais vendues, louées ni partagées</strong> avec des tiers à des fins commerciales.</p>
+        <p>LinkBounty ne monétise pas vos données. Le service est gratuit parce qu'il est simple à faire tourner, pas parce que vous êtes le produit.</p>
+      </div>
+    </div>
+
+    <div class="privacy-block">
+      <h2>Contact</h2>
+      <div class="body">
+        <p>Pour toute question relative à vos données ou à l'application de cette politique, contactez-nous à <strong>hommet.yohann@gmail.com</strong>.</p>
+        <p>Nous nous engageons à répondre dans un délai raisonnable et à traiter toute demande de suppression de données avec sérieux.</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="privacy-cta">
+  <div class="container">
+    <p>Prêt à vérifier vos liens&nbsp;?</p>
+    <a href="/" class="btn">Lancer une inspection gratuite</a>
+  </div>
+</section>
+{{end}}

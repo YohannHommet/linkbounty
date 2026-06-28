@@ -4,8 +4,8 @@
   hx-trigger="every 2s"
   hx-swap="outerHTML"
   aria-live="polite"
-  class="flex flex-col items-center gap-4 py-12">
-  <div class="animate-spin h-8 w-8 border-2 border-[var(--color-accent)] border-t-transparent rounded-full"></div>
-  <p class="text-[var(--color-muted)]">Connexion au site…</p>
+  class="scan-wait">
+  <div class="swiss-loader" aria-hidden="true"><span></span></div>
+  <p class="swiss-status">Connexion au site…</p>
 </div>
 {{end}}

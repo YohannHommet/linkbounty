@@ -5,69 +5,316 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{block "title" .}}LinkBounty — Vérificateur de liens brisés gratuit{{end}}</title>
   <meta name="description" content="{{block "description" .}}Détectez les liens brisés de votre site en moins d'une minute. Gratuit, sans compte, sans plugin.{{end}}">
-  <meta name="robots" content="index, follow">
+  <meta name="robots" content="{{block "robots" .}}index, follow, max-image-preview:large{{end}}">
+  <meta name="theme-color" content="#ff4124">
   <link rel="canonical" href="https://linkbounty.io{{block "canonical" .}}/{{end}}">
+
+  {{/* Icons & PWA manifest */}}
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="alternate icon" href="/favicon.ico" sizes="any">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/site.webmanifest">
 
   {{/* Open Graph */}}
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="LinkBounty">
-  <meta property="og:title" content="{{block "og:title" .}}LinkBounty — Free broken link checker{{end}}">
-  <meta property="og:description" content="{{block "og:description" .}}Find broken links on your site in under a minute. Free, no account, no plugin required.{{end}}">
+  <meta property="og:locale" content="fr_FR">
+  <meta property="og:title" content="{{block "og:title" .}}LinkBounty — Vérificateur de liens brisés gratuit{{end}}">
+  <meta property="og:description" content="{{block "og:description" .}}Détectez les liens brisés de votre site en moins d'une minute. Gratuit, sans compte, sans plugin.{{end}}">
   <meta property="og:url" content="https://linkbounty.io{{block "og:url" .}}/{{end}}">
+  <meta property="og:image" content="https://linkbounty.io{{block "og:image" .}}/static/og.png{{end}}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="LinkBounty — vérificateur de liens brisés gratuit">
 
   {{/* Twitter Card */}}
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="{{block "twitter:title" .}}LinkBounty — Free broken link checker{{end}}">
-  <meta name="twitter:description" content="{{block "twitter:description" .}}Find broken links on your site in under a minute. Free, no account required.{{end}}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{block "twitter:title" .}}LinkBounty — Vérificateur de liens brisés gratuit{{end}}">
+  <meta name="twitter:description" content="{{block "twitter:description" .}}Détectez les liens brisés de votre site en moins d'une minute. Gratuit, sans compte.{{end}}">
+  <meta name="twitter:image" content="https://linkbounty.io{{template "og:image" .}}">
 
-  <script src="https://cdn.tailwindcss.com"></script>
+  {{/* Structured data — Organization + WebSite (site-wide) */}}
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[
+  {"@type":"Organization","@id":"https://linkbounty.io/#organization","name":"LinkBounty","url":"https://linkbounty.io/","logo":"https://linkbounty.io/static/icon-512.png","description":"Vérificateur de liens brisés gratuit pour les blogueurs et propriétaires de sites."},
+  {"@type":"WebSite","@id":"https://linkbounty.io/#website","url":"https://linkbounty.io/","name":"LinkBounty","inLanguage":"fr-FR","description":"Détectez les liens brisés de votre site en moins d'une minute. Gratuit, sans compte, sans plugin.","publisher":{"@id":"https://linkbounty.io/#organization"}}
+  ]}
+  </script>
+  {{block "jsonld" .}}{{end}}
+
   <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;700&family=Playfair+Display:ital@0;1&family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     :root {
-      --color-bg:      #f9f6f0;
-      --color-text:    #21201d;
-      --color-muted:   #78716c;
-      --color-accent:  #b45309;
-      --color-error:   #dc2626;
-      --color-success: #16a34a;
+      /* — stable contract: names referenced by server-rendered fragments (status.go) — */
+      --color-bg:      #ffffff;
+      --color-text:    #0a0a0a;
+      --color-muted:   #595959;
+      --color-accent:  #ff4124;
+      --color-error:   #ff4124;
+      --color-success: #0f7a37;
       --color-surface: #ffffff;
-      --color-border:  #e7e5e0;
-      --font-sans:  'Plus Jakarta Sans', system-ui, sans-serif;
-      --font-serif: 'Playfair Display', Georgia, serif;
-      --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
-      --radius-sm: 6px;
-      --radius-md: 12px;
-      --radius-lg: 20px;
+      --color-border:  #e0e0e0;
+      --radius-sm: 0;
+      --radius-md: 0;
+      --radius-lg: 0;
+
+      /* — Swiss Signal palette — */
+      --signal:      #ff4124;
+      --signal-dark: #e03518;
+      --ink:         #0a0a0a;
+      --ink-mid:     #4a4a4a;
+      --ink-light:   #6b6b6b;
+      --signal-ink:  #c5300e;
+      --rule:        #0a0a0a;
+      --rule-light:  #e0e0e0;
+      --amber:       #d48000;
+      --amber-dark:  #b06000;
+      --wash:        #f5f5f5;
+
+      --font: 'Archivo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --grid: 1180px;
+      --pad-h: 48px;
     }
-    body {
-      font-family: var(--font-sans);
-      background-color: var(--color-bg);
-      color: var(--color-text);
+
+    html {
+      font-family: var(--font);
+      background: var(--color-bg);
+      color: var(--ink);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
     }
-    .brand { font-family: var(--font-serif); font-style: italic; color: var(--color-accent); }
-    .font-mono { font-family: var(--font-mono); }
+    body { min-height: 100vh; overflow-x: hidden; display: flex; flex-direction: column; }
+    ::selection { background: var(--signal); color: #fff; }
+    a:focus-visible, button:focus-visible, .form-input:focus-visible {
+      outline: 2px solid var(--signal); outline-offset: 2px;
+    }
+
+    .container { max-width: var(--grid); margin: 0 auto; padding: 0 var(--pad-h); width: 100%; }
+
+    /* — labels / type helpers — */
+    .eyebrow {
+      font-size: 10px; font-weight: 600; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--signal-ink); display: block;
+    }
+    .section-label {
+      font-size: 10px; font-weight: 700; letter-spacing: .22em;
+      text-transform: uppercase; color: var(--ink-light); display: block;
+    }
+
+    /* — HEADER — */
+    header.site {
+      border-bottom: 1px solid var(--rule);
+      position: sticky; top: 0; background: var(--color-bg); z-index: 100;
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .wordmark {
+      font-size: 17px; font-weight: 800; letter-spacing: -.02em;
+      text-transform: uppercase; text-decoration: none; color: var(--ink);
+      display: inline-flex; align-items: center;
+    }
+    .wordmark-dot {
+      width: 8px; height: 8px; background: var(--signal);
+      margin-left: 3px; margin-bottom: 1px; flex-shrink: 0; display: inline-block;
+    }
+    .nav-link {
+      font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+      text-decoration: none; color: var(--ink); border: 1px solid var(--rule);
+      padding: 8px 16px; display: inline-flex; align-items: center; gap: 8px;
+      transition: background .12s, color .12s;
+    }
+    .nav-link:hover { background: var(--ink); color: #fff; }
+
+    main { flex: 1 0 auto; width: 100%; }
+
+    /* — FOOTER — */
+    footer.site { border-top: 1px solid var(--rule); padding: 36px 0; }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .footer-nav { display: flex; gap: 24px; }
+    .footer-nav a {
+      font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--ink); text-decoration: none; transition: color .12s;
+    }
+    .footer-nav a:hover { color: var(--signal); }
+    .footer-tagline {
+      font-size: 10px; font-weight: 600; letter-spacing: .16em;
+      text-transform: uppercase; color: var(--ink-light);
+    }
+    @media (max-width: 640px) {
+      .footer-inner { flex-direction: column; align-items: flex-start; gap: 18px; }
+    }
+
+    /* — BUTTONS — */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font-family: var(--font); font-size: 12px; font-weight: 800; letter-spacing: .14em;
+      text-transform: uppercase; color: #fff; background: var(--signal);
+      border: 1px solid var(--signal); padding: 16px 28px; cursor: pointer;
+      transition: background .12s, transform .06s; text-decoration: none;
+    }
+    .btn:hover { background: var(--signal-dark); border-color: var(--signal-dark); }
+    .btn:active { transform: translateY(1px); }
+    .btn-block { display: flex; width: 100%; }
+
+    .btn-outline {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-family: var(--font); font-size: 10px; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--ink); background: var(--color-surface);
+      border: 1px solid var(--rule); padding: 9px 16px; cursor: pointer;
+      transition: background .12s, color .12s; text-decoration: none;
+    }
+    .btn-outline:hover { background: var(--ink); color: #fff; }
+
+    /* — FORM — */
+    .form-label {
+      display: block; font-size: 10px; font-weight: 700; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--ink); margin-bottom: 10px;
+    }
+    .form-input {
+      display: block; width: 100%; font-family: var(--font); font-size: 15px;
+      color: var(--ink); background: var(--color-surface); border: 1px solid var(--rule);
+      padding: 14px 16px; outline: none; transition: border-color .12s, box-shadow .12s;
+      -webkit-appearance: none; appearance: none;
+    }
+    .form-input::placeholder { color: var(--ink-light); }
+    .form-input:focus { border-color: var(--signal); box-shadow: inset 0 0 0 1px var(--signal); }
+    .form-reassurance {
+      margin-top: 14px; font-size: 10px; font-weight: 500; letter-spacing: .1em;
+      color: var(--ink-light); text-transform: uppercase;
+    }
+    .form-error {
+      margin-top: 12px; font-size: 12px; font-weight: 600; color: var(--signal-ink);
+      letter-spacing: .02em;
+    }
+
+    /* — REPORT CARD / TABLE — */
+    .report-card { border: 1px solid var(--rule); background: var(--color-surface); }
+    .report-card + .report-card { margin-top: -1px; }
+    .card-head {
+      border-bottom: 1px solid var(--rule); padding: 18px 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .card-head-src {
+      font-size: 13px; font-weight: 600; color: var(--ink); min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-variant-numeric: tabular-nums;
+    }
+    .card-head-count {
+      font-size: 10px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      flex-shrink: 0; padding: 4px 10px; border: 1px solid currentColor;
+    }
+    .count-error { color: var(--signal-ink); }
+    .count-amber { color: var(--amber-dark); }
+    .count-mute  { color: var(--ink-light); }
+
+    .table-head {
+      display: grid; grid-template-columns: 72px 1fr; gap: 0 24px;
+      padding: 10px 24px; background: var(--wash); border-bottom: 1px solid var(--rule-light);
+    }
+    .col-head {
+      font-size: 9px; font-weight: 700; letter-spacing: .2em;
+      text-transform: uppercase; color: var(--ink-light);
+    }
+    .report-row {
+      display: grid; grid-template-columns: 72px 1fr; gap: 0 24px;
+      padding: 18px 24px; align-items: center;
+      border-bottom: 1px solid var(--rule-light); transition: background .1s;
+    }
+    .report-row:last-child { border-bottom: none; }
+    .report-row:hover { background: #fafafa; }
+    .row-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .row-url {
+      font-size: 13px; color: var(--ink); font-variant-numeric: tabular-nums;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .row-src {
+      font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+      color: var(--ink-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .row-note { font-size: 11px; color: var(--ink-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; letter-spacing: .04em;
+      width: 56px; height: 28px; flex-shrink: 0; font-variant-numeric: tabular-nums;
+    }
+    .status-badge.error    { background: var(--signal); color: #fff; }
+    .status-badge.redirect { background: transparent; color: var(--amber-dark); border: 1px solid var(--amber); }
+    .status-badge.mute     { background: transparent; color: var(--ink-light); border: 1px solid var(--rule-light); }
+
+    /* — NOTICES — */
+    .notice {
+      border: 1px solid var(--rule-light); border-left: 3px solid var(--ink-light);
+      padding: 16px 20px; background: var(--wash);
+    }
+    .notice-signal { border-left-color: var(--signal); }
+    .notice-title {
+      font-size: 10px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+      color: var(--ink); margin-bottom: 6px;
+    }
+    .notice-body { font-size: 13px; line-height: 1.55; color: var(--ink-mid); }
+
+    /* — SCAN LOADER (live progress) — */
+    .scan-wait { padding: 80px 0; display: flex; flex-direction: column; align-items: center; gap: 22px; }
+    .swiss-loader { width: 220px; height: 2px; background: var(--rule-light); overflow: hidden; position: relative; }
+    .swiss-loader span {
+      display: block; height: 100%; width: 40%; background: var(--signal);
+      animation: lb-indeterminate 1.15s cubic-bezier(.65,0,.35,1) infinite;
+    }
+    @keyframes lb-indeterminate {
+      0%   { transform: translateX(-110%); }
+      100% { transform: translateX(360%); }
+    }
+    .swiss-status {
+      font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--ink-light);
+    }
+    .swiss-status strong { color: var(--ink); font-weight: 800; }
+
+    /* — links — */
+    a.inline-link { color: var(--signal); text-decoration: underline; text-underline-offset: 2px; }
+
+    @media (max-width: 900px) {
+      :root { --pad-h: 24px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .swiss-loader span { animation-duration: 2s; }
+      html { scroll-behavior: auto; }
+    }
   </style>
 </head>
-<body class="min-h-screen">
-  <header class="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="/" class="brand text-xl">Link·bounty</a>
-      <nav class="hidden sm:flex items-center gap-4 text-sm text-[var(--color-muted)]">
-        <a href="https://github.com" class="hover:text-[var(--color-text)] transition-colors">GitHub</a>
-      </nav>
+<body>
+  <header class="site">
+    <div class="container">
+      <div class="header-inner">
+        <a href="/" class="wordmark" aria-label="LinkBounty">LINKBOUNTY<span class="wordmark-dot" aria-hidden="true"></span></a>
+        <a href="https://github.com/YohannHommet/linkbounty" class="nav-link" rel="noopener">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+          GitHub
+        </a>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-3xl mx-auto px-4 py-12">
+  <main>
     {{block "content" .}}{{end}}
   </main>
 
-  <footer class="border-t border-[var(--color-border)] mt-16">
-    <div class="max-w-3xl mx-auto px-4 py-6 text-center text-sm text-[var(--color-muted)]">
-      LinkBounty · Gratuit, sans compte
+  <footer class="site">
+    <div class="container">
+      <div class="footer-inner">
+        <a href="/" class="wordmark" aria-label="LinkBounty">LINKBOUNTY<span class="wordmark-dot" aria-hidden="true"></span></a>
+        <nav class="footer-nav">
+          <a href="/a-propos">À propos</a>
+          <a href="/confidentialite">Confidentialité</a>
+          <a href="https://github.com/YohannHommet/linkbounty" rel="noopener">GitHub</a>
+        </nav>
+        <span class="footer-tagline">Gratuit · Sans compte</span>
+      </div>
     </div>
   </footer>
 </body>

@@ -3,28 +3,29 @@ package handlers
 import (
 	"sync"
 	"sync/atomic"
-)
 
-type JobStatus string
-
-const (
-	StatusRunning JobStatus = "running"
-	StatusDone    JobStatus = "done"
-	StatusError   JobStatus = "error"
+	"linkbounty/internal/database"
 )
 
 type JobState struct {
-	Status       atomic.Value // holds JobStatus string
+	Status       atomic.Pointer[database.JobStatus]
 	PagesCrawled atomic.Int64
-	ErrorMsg     atomic.Value // holds string
+	ErrorMsg     atomic.Pointer[string]
 }
 
 func newJobState() *JobState {
 	s := &JobState{}
-	s.Status.Store(StatusRunning)
-	s.ErrorMsg.Store("")
+	status := database.StatusRunning
+	s.Status.Store(&status)
+	empty := ""
+	s.ErrorMsg.Store(&empty)
 	return s
 }
+
+func (s *JobState) SetStatus(st database.JobStatus) { s.Status.Store(&st) }
+func (s *JobState) GetStatus() database.JobStatus   { return *s.Status.Load() }
+func (s *JobState) SetErrorMsg(msg string)          { s.ErrorMsg.Store(&msg) }
+func (s *JobState) GetErrorMsg() string             { return *s.ErrorMsg.Load() }
 
 type JobRegistry struct {
 	m sync.Map // map[string]*JobState

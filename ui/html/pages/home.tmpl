@@ -1,60 +1,217 @@
 {{define "title"}}LinkBounty — Vérificateur de liens brisés gratuit{{end}}
 
 {{define "content"}}
-<div class="text-center max-w-xl mx-auto">
-  <h1 class="text-3xl sm:text-4xl font-bold text-[var(--color-text)] leading-tight mb-4">
-    Vos liens brisés coûtent du trafic<br>et de la crédibilité. Silencieusement.
-  </h1>
-  <p class="text-[var(--color-muted)] mb-10">
-    Entrez l'URL de votre site et recevez un rapport de liens brisés en quelques secondes.
-  </p>
+<style>
+  .hero { border-bottom: 1px solid var(--rule); padding: 80px 0 72px; }
+  .hero-inner { display: grid; grid-template-columns: 1fr 440px; gap: 0 80px; align-items: start; }
+  .hero-headline {
+    font-size: clamp(56px, 6vw, 88px); font-weight: 900; line-height: .92;
+    letter-spacing: -.04em; text-transform: uppercase; color: var(--ink); margin: 24px 0 32px;
+  }
+  .hero-headline em { font-style: normal; color: var(--signal); }
+  .hero-subhead { font-size: 16px; line-height: 1.55; color: var(--ink-mid); max-width: 460px; }
+  .hero-form-col { border-left: 1px solid var(--rule); padding-left: 48px; padding-top: 4px; }
 
-  <form
-    action="/scan"
-    method="POST"
-    class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-end"
-  >
-    <div class="flex-1 text-left">
-      <label for="url-input" class="block text-sm font-medium text-[var(--color-text)] mb-1">
-        URL de votre site
-      </label>
-      <input
-        id="url-input"
-        type="url"
-        name="url"
-        placeholder="https://monblog.fr"
-        required
-        class="w-full px-4 py-3 text-base border border-[var(--color-border)] rounded-[var(--radius-sm)] bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:border-transparent"
-        style="font-size: 16px;"
-        aria-describedby="url-hint"
-      >
+  .stats-strip { border-bottom: 1px solid var(--rule); }
+  .stats-inner { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .stat-item { padding: 48px 40px 48px 0; border-right: 1px solid var(--rule-light); }
+  .stat-item:first-child { padding-left: 0; }
+  .stat-item:nth-child(2) { padding-left: 40px; }
+  .stat-item:last-child { border-right: none; padding-left: 40px; padding-right: 0; }
+  .stat-label-em { display: block; font-size: 10px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--signal); margin-bottom: 4px; }
+  .stat-number { font-size: clamp(52px, 5vw, 72px); font-weight: 900; letter-spacing: -.04em; line-height: 1; color: var(--ink); display: block; margin-bottom: 8px; }
+  .stat-number.accent { color: var(--signal); }
+  .stat-desc { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-light); line-height: 1.4; }
+
+  .proc { border-bottom: 1px solid var(--rule); padding: 72px 0; }
+  .proc-grid { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 32px; }
+  .proc-step { padding-right: 40px; border-right: 1px solid var(--rule-light); }
+  .proc-step:nth-child(2) { padding-left: 40px; }
+  .proc-step:last-child { border-right: none; padding-left: 40px; padding-right: 0; }
+  .proc-num { font-size: 13px; font-weight: 800; letter-spacing: .1em; color: var(--signal); }
+  .proc-title { font-size: 19px; font-weight: 800; letter-spacing: -.02em; text-transform: uppercase; margin: 14px 0 8px; }
+  .proc-desc { font-size: 14px; line-height: 1.55; color: var(--ink-mid); }
+
+  .preview-section { padding: 72px 0; border-bottom: 1px solid var(--rule); }
+
+  .faq { padding: 72px 0; }
+  .faq-list { margin-top: 32px; border-top: 1px solid var(--rule-light); }
+  .faq-item { padding: 28px 0; border-bottom: 1px solid var(--rule-light); display: grid; grid-template-columns: 1fr 1.5fr; gap: 0 48px; align-items: start; }
+  .faq-q { font-size: 17px; font-weight: 800; letter-spacing: -.01em; text-transform: uppercase; line-height: 1.25; }
+  .faq-a { font-size: 15px; line-height: 1.6; color: var(--ink-mid); }
+
+  @media (max-width: 900px) {
+    .faq-item { grid-template-columns: 1fr; gap: 10px; }
+    .hero { padding: 48px 0; }
+    .hero-inner { grid-template-columns: 1fr; gap: 44px 0; }
+    .hero-form-col { border-left: none; border-top: 1px solid var(--rule); padding-left: 0; padding-top: 40px; }
+    .hero-subhead { max-width: 100%; }
+    .stats-inner, .proc-grid { grid-template-columns: 1fr; }
+    .stat-item { border-right: none; border-bottom: 1px solid var(--rule-light); padding: 32px 0 !important; }
+    .stat-item:last-child { border-bottom: none; }
+    .proc-step { border-right: none; border-bottom: 1px solid var(--rule-light); padding: 0 0 28px !important; margin-bottom: 28px; }
+    .proc-step:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0 !important; }
+  }
+</style>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-inner">
+      <div>
+        <span class="eyebrow">Outil gratuit · Sans compte</span>
+        <h1 class="hero-headline">Vos<br>liens<br>brisés,<br><em>trouvés.</em></h1>
+        <p class="hero-subhead">LinkBounty parcourt votre site, détecte chaque lien mort ou redirigé, et génère un rapport partageable — en moins d'une minute.</p>
+      </div>
+
+      <div class="hero-form-col">
+        <form id="scan-form" action="/scan" method="POST">
+          <label class="form-label" for="url-input">URL de votre site</label>
+          <input
+            class="form-input"
+            type="url"
+            id="url-input"
+            name="url"
+            placeholder="https://monblog.fr"
+            autocomplete="url"
+            spellcheck="false"
+            autofocus
+            required
+          >
+          <button class="btn btn-block" type="submit" id="scan-btn" style="margin-top:12px;">Scan gratuit</button>
+        </form>
+        <p class="form-reassurance">Sans compte · Sans plugin · Moins d'une minute</p>
+      </div>
     </div>
-    <button
-      type="submit"
-      class="px-6 py-3 bg-[var(--color-accent)] text-white font-medium rounded-[var(--radius-sm)] hover:opacity-90 transition-opacity"
-      style="min-height: 44px;"
-    >
-      Scan gratuit
-    </button>
-  </form>
+  </div>
+</section>
 
-  <p id="url-hint" class="mt-3 text-sm text-[var(--color-muted)]">
-    Sans compte · Sans plugin · &lt; 1 minute
-  </p>
-</div>
+<section class="stats-strip">
+  <div class="container">
+    <div class="stats-inner">
+      <div class="stat-item">
+        <span class="stat-label-em">Par scan</span>
+        <span class="stat-number">100</span>
+        <span class="stat-desc">Pages analysées par scan</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label-em">Durée de vie</span>
+        <span class="stat-number">7</span>
+        <span class="stat-desc">Jours — rapport partageable</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label-em">Compte requis</span>
+        <span class="stat-number accent">0</span>
+        <span class="stat-desc">Zéro compte requis</span>
+      </div>
+    </div>
+  </div>
+</section>
 
-<div class="mt-20 grid sm:grid-cols-3 gap-6 text-center text-sm">
-  <div class="p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)]">
-    <div class="text-2xl font-bold text-[var(--color-accent)] mb-1">100</div>
-    <div class="text-[var(--color-muted)]">pages analysées par scan</div>
+<section class="proc">
+  <div class="container">
+    <span class="section-label">La procédure</span>
+    <div class="proc-grid">
+      <div class="proc-step">
+        <span class="proc-num">01</span>
+        <h3 class="proc-title">On colle l'URL</h3>
+        <p class="proc-desc">Votre page d'accueil suffit. On suit les liens internes, jusqu'à 100 pages.</p>
+      </div>
+      <div class="proc-step">
+        <span class="proc-num">02</span>
+        <h3 class="proc-title">On vérifie chaque lien</h3>
+        <p class="proc-desc">Liens externes testés un par un. Codes 404, 500, redirections — tout est noté.</p>
+      </div>
+      <div class="proc-step">
+        <span class="proc-num">03</span>
+        <h3 class="proc-title">On remet le rapport</h3>
+        <p class="proc-desc">Un rapport clair, partageable par lien pendant 7 jours. À corriger, puis classer.</p>
+      </div>
+    </div>
   </div>
-  <div class="p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)]">
-    <div class="text-2xl font-bold text-[var(--color-accent)] mb-1">7j</div>
-    <div class="text-[var(--color-muted)]">rapport partageable</div>
+</section>
+
+<section class="preview-section">
+  <div class="container">
+    <span class="section-label">Aperçu du rapport</span>
+    <div class="report-card" style="max-width:860px;margin-top:28px;" aria-label="Exemple de rapport">
+      <div class="card-head">
+        <div style="min-width:0;">
+          <div class="card-head-src" style="font-weight:800;text-transform:uppercase;font-size:16px;">monblog.fr</div>
+          <div class="report-meta" style="font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-light);margin-top:4px;">
+            <span style="color:var(--signal);font-weight:700;">3 liens brisés</span> · 42 pages analysées
+          </div>
+        </div>
+        <span class="btn-outline" aria-hidden="true">Partager</span>
+      </div>
+      <div class="table-head"><span class="col-head">Statut</span><span class="col-head">URL</span></div>
+      <div class="report-row">
+        <span class="status-badge error">404</span>
+        <div class="row-main"><span class="row-url">https://vieux-site-ferme.com/ressource</span><span class="row-note">Introuvable</span></div>
+      </div>
+      <div class="report-row">
+        <span class="status-badge error">500</span>
+        <div class="row-main"><span class="row-url">https://api.partenaire.io/v1/data</span><span class="row-note">Erreur serveur</span></div>
+      </div>
+      <div class="report-row">
+        <span class="status-badge redirect">301</span>
+        <div class="row-main"><span class="row-url" style="color:var(--amber-dark);">https://blog.exemple.com/vieux-lien</span><span class="row-note">Redirection</span></div>
+      </div>
+    </div>
   </div>
-  <div class="p-5 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)]">
-    <div class="text-2xl font-bold text-[var(--color-accent)] mb-1">0</div>
-    <div class="text-[var(--color-muted)]">compte requis</div>
+</section>
+
+<section class="faq">
+  <div class="container">
+    <span class="section-label">Questions fréquentes</span>
+    <div class="faq-list">
+      <div class="faq-item">
+        <h3 class="faq-q">LinkBounty est-il vraiment gratuit ?</h3>
+        <p class="faq-a">Oui. LinkBounty est 100 % gratuit, sans compte, sans carte bancaire et sans limite cachée.</p>
+      </div>
+      <div class="faq-item">
+        <h3 class="faq-q">Faut-il installer un plugin ou du code ?</h3>
+        <p class="faq-a">Non. Collez l'URL de votre site, c'est tout. Aucun plugin, aucune extension, aucune balise à ajouter.</p>
+      </div>
+      <div class="faq-item">
+        <h3 class="faq-q">Quels problèmes LinkBounty détecte-t-il ?</h3>
+        <p class="faq-a">Les liens morts (404, 410), les erreurs serveur (500), les redirections (301, 302) et les liens non vérifiables (ex : LinkedIn).</p>
+      </div>
+      <div class="faq-item">
+        <h3 class="faq-q">Combien de pages sont analysées ?</h3>
+        <p class="faq-a">Jusqu'à 100 pages internes par scan, en suivant les liens depuis l'URL de départ.</p>
+      </div>
+      <div class="faq-item">
+        <h3 class="faq-q">Combien de temps le rapport reste-t-il disponible ?</h3>
+        <p class="faq-a">Chaque rapport est partageable par lien pendant 7 jours, puis supprimé automatiquement.</p>
+      </div>
+      <div class="faq-item">
+        <h3 class="faq-q">Mon site est en React ou Vue, est-ce compatible ?</h3>
+        <p class="faq-a">LinkBounty lit le HTML renvoyé par le serveur. Les sites rendus entièrement côté client peuvent être analysés partiellement ; un avertissement s'affiche le cas échéant.</p>
+      </div>
+    </div>
   </div>
-</div>
+</section>
+
+<script>
+  (function () {
+    var f = document.getElementById('scan-form'), b = document.getElementById('scan-btn');
+    if (f && b) f.addEventListener('submit', function () { b.textContent = 'Analyse en cours…'; b.disabled = true; });
+  })();
+</script>
+{{end}}
+
+{{define "jsonld"}}
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"LinkBounty","applicationCategory":"BusinessApplication","operatingSystem":"Web","url":"https://linkbounty.io/","inLanguage":"fr-FR","description":"Vérificateur de liens brisés gratuit. Détectez les liens morts, erreurs serveur et redirections de votre site en moins d'une minute.","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"featureList":["Détection de liens brisés (404, 410)","Détection des erreurs serveur (500)","Détection des redirections (301, 302)","Analyse jusqu'à 100 pages internes","Rapport partageable pendant 7 jours"],"publisher":{"@id":"https://linkbounty.io/#organization"}}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[
+{"@type":"Question","name":"LinkBounty est-il vraiment gratuit ?","acceptedAnswer":{"@type":"Answer","text":"Oui. LinkBounty est 100 % gratuit, sans compte, sans carte bancaire et sans limite cachée."}},
+{"@type":"Question","name":"Faut-il installer un plugin ou du code ?","acceptedAnswer":{"@type":"Answer","text":"Non. Collez l'URL de votre site, c'est tout. Aucun plugin, aucune extension, aucune balise à ajouter."}},
+{"@type":"Question","name":"Quels problèmes LinkBounty détecte-t-il ?","acceptedAnswer":{"@type":"Answer","text":"Les liens morts (404, 410), les erreurs serveur (500), les redirections (301, 302) et les liens non vérifiables (ex : LinkedIn)."}},
+{"@type":"Question","name":"Combien de pages sont analysées ?","acceptedAnswer":{"@type":"Answer","text":"Jusqu'à 100 pages internes par scan, en suivant les liens depuis l'URL de départ."}},
+{"@type":"Question","name":"Combien de temps le rapport reste-t-il disponible ?","acceptedAnswer":{"@type":"Answer","text":"Chaque rapport est partageable par lien pendant 7 jours, puis supprimé automatiquement."}},
+{"@type":"Question","name":"Mon site est en React ou Vue, est-ce compatible ?","acceptedAnswer":{"@type":"Answer","text":"LinkBounty lit le HTML renvoyé par le serveur. Les sites rendus entièrement côté client peuvent être analysés partiellement ; un avertissement s'affiche le cas échéant."}}
+]}
+</script>
 {{end}}

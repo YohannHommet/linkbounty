@@ -1,10 +1,15 @@
+# PLACEHOLDER: replace linkbounty.io with your actual domain before deploying.
+# Copy this file to /etc/caddy/Caddyfile on the VPS, then: sudo systemctl reload caddy
+
 linkbounty.io {
+    # Compression (Caddy's responsibility; zstd preferred, gzip fallback)
+    encode zstd gzip
+
+    # Long-lived cache for fingerprinted static assets.
+    # Security headers (CSP, X-Frame-Options, HSTS, etc.) are set by the Go app — not here.
+    @static path /static/*
+    header @static Cache-Control "public, max-age=2592000, immutable"
+
+    # Reverse proxy to the Go app
     reverse_proxy localhost:8080
-    encode gzip
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options nosniff
-        X-Frame-Options DENY
-        Referrer-Policy strict-origin-when-cross-origin
-    }
 }

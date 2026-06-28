@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"net/http"
+
+	"linkbounty/internal/database"
 )
 
 const (
-	spaLinkThreshold    = 5   // fewer external links than this on ≥10 pages → likely SPA
-	spaPageThreshold    = 10
-	extLinkCap          = 500
+	spaLinkThreshold = 5  // fewer external links than this after ≥spaPageThreshold pages → likely SPA
+	spaPageThreshold = 10 // need at least this many pages crawled before the SPA signal is meaningful
+	extLinkCap       = 500
 )
 
 type reportData struct {
@@ -22,6 +24,7 @@ type reportData struct {
 	SPAWarning        bool // true when site appears to use client-side rendering
 	Groups            []groupData
 	Redirects         []linkData
+	Unverifiable      []linkData
 }
 
 type groupData struct {
@@ -45,16 +48,32 @@ func (a *App) handleReport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if job == nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.WriteHeader(http.StatusNotFound)
 		a.render(w, "error.tmpl", map[string]string{
 			"Message": "Ce rapport n'existe pas ou a expiré (7 jours). Lance un nouveau scan gratuitement.",
 		})
 		return
 	}
 
+	var groups []database.ReportGroup
+	if job.Status == database.StatusDone {
+		groups, err = a.DB.GetReportGroups(id)
+		if err != nil {
+			http.Error(w, "Erreur interne.", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	a.render(w, "report.tmpl", buildReportData(job, groups))
+}
+
+// buildReportData is a pure function mapping DB records to template data.
+func buildReportData(job *database.Job, groups []database.ReportGroup) reportData {
 	data := reportData{
 		JobID:             job.ID,
 		Domain:            job.Domain,
-		Status:            job.Status,
+		Status:            string(job.Status),
 		ErrorMsg:          job.ErrorMsg,
 		PagesCrawled:      job.PagesCrawled,
 		BrokenCount:       job.BrokenCount,
@@ -63,32 +82,28 @@ func (a *App) handleReport(w http.ResponseWriter, r *http.Request) {
 		SPAWarning:        job.ExtLinksFound < spaLinkThreshold && job.PagesCrawled >= spaPageThreshold,
 	}
 
-	if job.Status == "done" {
-		raw, err := a.DB.GetReportGroups(id)
-		if err != nil {
-			http.Error(w, "Erreur interne.", http.StatusInternalServerError)
-			return
+	for _, g := range groups {
+		gd := groupData{SourcePage: g.SourcePage}
+		for _, l := range g.Links {
+			ld := linkData{
+				SourcePage: l.SourcePage,
+				TargetLink: l.TargetLink,
+				StatusCode: l.StatusCode,
+				ErrorMsg:   l.ErrorMsg,
+			}
+			switch l.LinkType {
+			case "redirect":
+				data.Redirects = append(data.Redirects, ld)
+			case "unverifiable":
+				data.Unverifiable = append(data.Unverifiable, ld)
+			default:
+				gd.BrokenLinks = append(gd.BrokenLinks, ld)
+			}
 		}
-		for _, g := range raw {
-			gd := groupData{SourcePage: g.SourcePage}
-			for _, l := range g.Links {
-				ld := linkData{
-					SourcePage: l.SourcePage,
-					TargetLink: l.TargetLink,
-					StatusCode: l.StatusCode,
-					ErrorMsg:   l.ErrorMsg,
-				}
-				if l.LinkType == "redirect" {
-					data.Redirects = append(data.Redirects, ld)
-				} else {
-					gd.BrokenLinks = append(gd.BrokenLinks, ld)
-				}
-			}
-			if len(gd.BrokenLinks) > 0 {
-				data.Groups = append(data.Groups, gd)
-			}
+		if len(gd.BrokenLinks) > 0 {
+			data.Groups = append(data.Groups, gd)
 		}
 	}
 
-	a.render(w, "report.tmpl", data)
+	return data
 }

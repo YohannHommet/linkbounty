@@ -1,0 +1,33 @@
+{{define "title"}}Page introuvable · LinkBounty{{end}}
+{{define "description"}}La page que vous cherchez n'existe pas ou a été déplacée.{{end}}
+{{define "robots"}}noindex, follow{{end}}
+{{define "canonical"}}/{{end}}
+
+{{define "content"}}
+<style>
+  .notfound-wrap {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 96px var(--pad-h);
+    min-height: 60vh;
+  }
+  .notfound-code {
+    font-size: clamp(96px, 18vw, 180px); font-weight: 900; letter-spacing: -.06em;
+    line-height: 1; color: var(--signal); display: block;
+  }
+  .notfound-eyebrow { margin-top: 16px; }
+  .notfound-msg {
+    margin-top: 20px; font-size: 17px; line-height: 1.6;
+    color: var(--ink-mid); max-width: 440px;
+  }
+  .notfound-action { margin-top: 36px; }
+</style>
+
+<section class="notfound-wrap">
+  <span class="notfound-code" aria-label="Erreur 404">404</span>
+  <span class="eyebrow notfound-eyebrow">Page introuvable</span>
+  <p class="notfound-msg">La page que vous cherchez n'existe pas ou a été déplacée.</p>
+  <div class="notfound-action">
+    <a href="/" class="btn">Retour à l'accueil</a>
+  </div>
+</section>
+{{end}}

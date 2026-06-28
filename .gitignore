@@ -2,3 +2,4 @@ linkbounty
 *.db
 *.db-wal
 *.db-shm
+.gstack/

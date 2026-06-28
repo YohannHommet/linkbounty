@@ -12,7 +12,7 @@ import (
 func TestStatusRunningFromRegistry(t *testing.T) {
 	app := newTestApp(t)
 	state := app.Registry.Register("test-running")
-	state.Status.Store(StatusRunning)
+	state.SetStatus(database.StatusRunning)
 	state.PagesCrawled.Store(12)
 
 	req := httptest.NewRequest(http.MethodGet, "/r/test-running/status", nil)
@@ -36,7 +36,7 @@ func TestStatusRunningFromRegistry(t *testing.T) {
 func TestStatusDoneFromRegistry(t *testing.T) {
 	app := newTestApp(t)
 	state := app.Registry.Register("test-done")
-	state.Status.Store(StatusDone)
+	state.SetStatus(database.StatusDone)
 
 	req := httptest.NewRequest(http.MethodGet, "/r/test-done/status", nil)
 	req.SetPathValue("uuid", "test-done")
@@ -56,8 +56,8 @@ func TestStatusDoneFromRegistry(t *testing.T) {
 func TestStatusErrorFromRegistry(t *testing.T) {
 	app := newTestApp(t)
 	state := app.Registry.Register("test-err")
-	state.Status.Store(StatusError)
-	state.ErrorMsg.Store("connection refused")
+	state.SetStatus(database.StatusError)
+	state.SetErrorMsg("connection refused")
 
 	req := httptest.NewRequest(http.MethodGet, "/r/test-err/status", nil)
 	req.SetPathValue("uuid", "test-err")

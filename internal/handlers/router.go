@@ -4,8 +4,6 @@ import (
 	"html/template"
 	"net/http"
 	"path/filepath"
-	"sync"
-	"time"
 
 	"linkbounty/internal/database"
 )
@@ -25,8 +23,8 @@ type App struct {
 	Registry *JobRegistry
 	tmpls    map[string]*template.Template
 	scanSem  chan struct{} // global concurrency: max 10 simultaneous scans
-	rateMu   sync.Mutex
-	rateMap  map[string]time.Time // IP → last scan time
+	rate     *RateLimiter
+	uiDir    string
 }
 
 func NewApp(db *database.Store, registry *JobRegistry, uiDir string) (*App, error) {
@@ -35,7 +33,8 @@ func NewApp(db *database.Store, registry *JobRegistry, uiDir string) (*App, erro
 		Registry: registry,
 		tmpls:    make(map[string]*template.Template),
 		scanSem:  make(chan struct{}, 10),
-		rateMap:  make(map[string]time.Time),
+		rate:     NewRateLimiter(rateLimitWindow),
+		uiDir:    uiDir,
 	}
 	if err := a.compileTemplates(uiDir); err != nil {
 		return nil, err
@@ -80,24 +79,36 @@ func (a *App) render(w http.ResponseWriter, name string, data any) {
 	}
 }
 
-func (a *App) renderFragment(w http.ResponseWriter, name string, tmplName string, data any) {
-	ts, ok := a.tmpls[name]
-	if !ok {
-		http.Error(w, "template not found: "+name, http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	if err := ts.ExecuteTemplate(w, tmplName, data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func (a *App) Routes() *http.ServeMux {
+func (a *App) Routes() http.Handler {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", a.handleHome)
+	mux.HandleFunc("GET /{$}", a.handleHome)
+	mux.HandleFunc("GET /a-propos", a.handleAbout)
 	mux.HandleFunc("POST /scan", a.handleScan)
 	mux.HandleFunc("GET /r/{uuid}", a.handleReport)
 	mux.HandleFunc("GET /r/{uuid}/status", a.handleStatus)
+	mux.HandleFunc("GET /r/{uuid}/og.png", a.handleReportOG)
 	mux.HandleFunc("GET /robots.txt", a.handleRobots)
-	return mux
+	mux.HandleFunc("GET /sitemap.xml", a.handleSitemap)
+	mux.HandleFunc("GET /bot", a.handleBot)
+	mux.HandleFunc("GET /confidentialite", a.handlePrivacy)
+
+	// Static assets (favicon, OG image, app icons, manifest).
+	staticFS := http.FileServer(http.Dir(filepath.Join(a.uiDir, "static")))
+	mux.Handle("GET /static/", cacheControl(http.StripPrefix("/static/", staticFS)))
+	mux.HandleFunc("GET /favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/static/favicon.svg", http.StatusMovedPermanently)
+	})
+
+	// Catch-all: any path not matched above returns a proper 404 page.
+	mux.HandleFunc("GET /", a.handle404)
+
+	return securityHeaders(accessLog(mux))
+}
+
+// cacheControl adds a long max-age to static assets (they are content-stable).
+func cacheControl(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		next.ServeHTTP(w, r)
+	})
 }
