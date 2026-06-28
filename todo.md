@@ -73,8 +73,8 @@ Last updated during the pre-launch finishing pass.
 
 ## 🧪 Hardening (recommended, non-blocking)
 
-- [ ] **Race detector** — run `CGO_ENABLED=1 go test -race ./...` on a machine with a C compiler (this dev env has none, so it was never run)
-- [ ] **CI** — add `.github/workflows/` to run build + vet + gofmt + test on push/PR (no CI today; expected for a public repo)
+- [x] **Race detector** — runs in CI (`go test -race`) on the Ubuntu runner; first run green, no data races.
+- [x] **CI** — `.github/workflows/ci.yml` runs gofmt + vet + build + test -race on push/PR. First run: ✅ green.
 - [ ] **Test gaps** — no test for the OG image handler (`ogimage.go`) or rendering of new pages (bot/privacy/404)
 - [ ] **Mobile** — visually verify `/bot`, `/confidentialite`, 404 at mobile width (likely fine, same responsive pattern, not screenshotted)
 - [ ] **A11y** — primary button is white-on-#ff4124 (~3.4:1), below WCAG AA for 12px text; either accept as a brand tradeoff or darken the button bg
