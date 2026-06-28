@@ -52,7 +52,7 @@ Last updated during the pre-launch finishing pass.
 
 ## 🚧 Blockers before launch (need a decision / real value)
 
-- [ ] **GitHub repo URL** — replace placeholder `https://github.com/yohannhommet/linkbounty` in `ui/html/layouts/base.tmpl` (2 spots: header + footer, marked with a TODO)
+- [x] **GitHub repo URL** — done: `https://github.com/YohannHommet/linkbounty` (public), links updated in `base.tmpl`, code pushed.
 - [ ] **Production domain** — `https://linkbounty.io` is hardcoded in templates (canonical/OG) and is the default `SITE_URL`. If it changes, update: `base.tmpl`, the `siteURL()` default in `seo.go`, `deploy/Caddyfile` (PLACEHOLDER), `deploy/linkbounty.service` (PLACEHOLDER)
 - [ ] **Register the domain + DNS** (A/AAAA to the VPS)
 - [ ] **License** — MIT assumed; confirm or replace `LICENSE`
@@ -78,7 +78,7 @@ Last updated during the pre-launch finishing pass.
 - [ ] **Test gaps** — no test for the OG image handler (`ogimage.go`) or rendering of new pages (bot/privacy/404)
 - [ ] **Mobile** — visually verify `/bot`, `/confidentialite`, 404 at mobile width (likely fine, same responsive pattern, not screenshotted)
 - [ ] **A11y** — primary button is white-on-#ff4124 (~3.4:1), below WCAG AA for 12px text; either accept as a brand tradeoff or darken the button bg
-- [ ] **Commit** — the working tree has substantial uncommitted changes; review + commit when ready
+- [x] **Commit & push** — work committed and pushed to `github.com/YohannHommet/linkbounty` (branch `develop`)
 
 ---
 
