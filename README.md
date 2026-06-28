@@ -1,5 +1,8 @@
 # LinkBounty
 
+[![CI](https://github.com/YohannHommet/linkbounty/actions/workflows/ci.yml/badge.svg)](https://github.com/YohannHommet/linkbounty/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
+
 **Free broken-link checker for bloggers and content creators.**
 
 Submit a URL → LinkBounty crawls your site, checks every outbound link, and gives you a shareable report. No account, no plugin, no tracking.
